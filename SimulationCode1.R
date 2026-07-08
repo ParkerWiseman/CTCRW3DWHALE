@@ -8,12 +8,12 @@ set.seed(123)
 # Define TRUE CTCRW parameters.
 beta1_true  <- 2.8     # horizontal OU damping
 beta2_true  <- 0.8     # vertical OU damping
-sigma_true  <- 30      # horizontal process noise SD
+sigma1_true  <- 30      # horizontal process noise SD
 sigma2_true <- 10      # vertical process noise SD
 
 # computing variances inside the Q matrix.
-s1 <- sigma_true^2
-s2 <- sigma_true^2
+s1 <- sigma1_true^2
+s2 <- sigma1_true^2
 s3 <- sigma2_true^2
 
 # Set up time grid.
@@ -296,7 +296,7 @@ neg_loglikelihood <- function(params, data_aug) {
   
   beta1  <- exp(params["beta1"])
   beta2  <- exp(params["beta2"])
-  sigma  <- exp(params["sigma"])
+  sigma1  <- exp(params["sigma1"])
   sigma2 <- exp(params["sigma2"])
   
   y <- as.matrix(data_aug[, c("x","y","depth")])
@@ -310,8 +310,8 @@ neg_loglikelihood <- function(params, data_aug) {
   
   delta <- rep(dt, nrow(data_aug))
   
-  s1 <- sigma^2
-  s2 <- sigma^2
+  s1 <- sigma1^2
+  s2 <- sigma1^2
   s3 <- sigma2^2
   
   beta1_vec <- rep(beta1, nrow(data_aug))
@@ -346,7 +346,7 @@ neg_loglikelihood <- function(params, data_aug) {
 params_start <- c(
   beta1  = log(0.5),
   beta2  = log(0.5),
-  sigma  = log(10),
+  sigma1  = log(10),
   sigma2 = log(10)
 )
 
@@ -372,7 +372,7 @@ p_hat
 
 beta1_hat <- p_hat["beta1"]
 beta2_hat <- p_hat["beta2"]
-sigma_hat <- p_hat["sigma"]
+sigma1_hat <- p_hat["sigma1"]
 sigma2_hat <- p_hat["sigma2"]
 
 y  <- as.matrix(aug[, c("x","y","depth")])
@@ -385,8 +385,8 @@ Hmat <- build_Hmat(aug, var0_xy, var1_xy, sd_depth)
 
 delta <- rep(dt, nrow(aug))
 
-s1 <- sigma_hat^2
-s2 <- sigma_hat^2
+s1 <- sigma1_hat^2
+s2 <- sigma1_hat^2
 s3 <- sigma2_hat^2
 
 beta1_vec <- rep(beta1_hat, nrow(aug))
