@@ -1,4 +1,5 @@
 
+
 # Parameter values are not re-obtained.
 
 library(MASS)
@@ -75,8 +76,8 @@ hdop      <- rep(NA, N)
 
 # LINEAR HDOP MODEL:
 # Var(x) = var0_xy + var1_xy * HDOP
-var0_xy <- 5^2
-var1_xy <- 1^2
+var0_xy <- 0
+var1_xy <- 0.1
 # Changing these two values changes how well the re-obtained values match the chosen values.
 sd_depth  <- 10
 
