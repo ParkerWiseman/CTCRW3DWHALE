@@ -1,4 +1,146 @@
 
+#Constant Error Simulation Experiment.
+
+library(MASS)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(plotly)
+set.seed(123)
+
+source("matrices.R")
+source("CTCRW_filter.R")
+source("CTCRW_smoother.R")
+source("neg_loglikelihood.R")
+
+###############################################
+# MATRICES
+###############################################
+
+
+###############################################
+# TRUE PARAMETERS
+###############################################
+
+beta1_true  <- 2.8
+beta2_true  <- 0.8
+sigma1_true <- 30
+sigma2_true <- 10
+
+s1 <- sigma1_true^2
+s2 <- sigma1_true^2
+s3 <- sigma2_true^2
+
+###############################################
+# SIMULATION
+###############################################
+
+N  <- 5000
+dt <- 15 / (24*60)
+time_vec <- seq(0, by = dt, length.out = N)
+
+X <- matrix(0, nrow = N, ncol = 6)
+X[1,] <- c(0, 0, 0, 0, -50, 0)
+
+Tmat <- makeT_R(beta1_true, beta2_true, dt)
+Qmat <- makeQ_R(beta1_true, beta2_true, s1, s2, s3, dt)
+
+for (i in 2:N) {
+  X[i,] <- Tmat %*% X[i-1,] + MASS::mvrnorm(1, rep(0,6), Qmat)
+}
+
+sd_xy    <- 5
+sd_depth <- 5
+
+obs_x     <- X[,1] + rnorm(N, 0, sd_xy)
+obs_y     <- X[,3] + rnorm(N, 0, sd_xy)
+obs_depth <- X[,5] + rnorm(N, 0, sd_depth)
+
+sim_data <- data.frame(
+  time  = ymd_hms("2020-01-01 00:00:00") + time_vec*86400,
+  x     = obs_x,
+  y     = obs_y,
+  depth = obs_depth
+)
+
+aug <- sim_data %>%
+  mutate(
+    Time = as.numeric(difftime(time, min(time), units = "days")) + 1,
+    orig_index = seq_len(n())
+  )
+
+y <- as.matrix(aug[, c("x","y","depth")])
+
+###############################################
+# CONSTANT H MATRIX
+###############################################
+
+
+
+###############################################
+# FILTER
+###############################################
+
+
+
+###############################################
+# SMOOTHER
+###############################################
+
+
+
+###############################################
+# NEGATIVE LOG-LIKELIHOOD
+###############################################
+
+
+
+###############################################
+# OPTIMIZATION
+###############################################
+
+params_start <- c(
+  beta1  = log(1),
+  beta2  = log(1),
+  sigma1 = log(10),
+  sigma2 = log(10)
+)
+
+fit <- optim(
+  par      = params_start,
+  fn       = neg_loglikelihood_ConstantError,
+  data_aug = aug,
+  method   = "L-BFGS-B",
+  control  = list(trace = 1, maxit = 1000)
+)
+
+p_hat <- exp(fit$par)
+print(p_hat)
+
+
+
+
+
+
+
+#################################
+#################################
+#################################
+#################################
+
+#(ignore below code)
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Parameter values are re-obtained.
 
@@ -10,6 +152,9 @@ library(plotly)
 set.seed(123)
 
 source("matrices.R")
+source("CTCRW_filter.R")
+source("CTCRW_smoother.R")
+source("neg_loglikelihood.R")
 
 # TRUE PARAMETERS
 beta1_true  <- 2.8
@@ -65,14 +210,7 @@ y <- as.matrix(aug[, c("x","y","depth")])
 
 
 
-# CONSTANT H MATRIX
-build_Hmat <- function(N, sd_xy, sd_depth) {
-  Hmat <- matrix(NA_real_, N, 3)
-  Hmat[,1] <- sd_xy^2
-  Hmat[,2] <- sd_xy^2
-  Hmat[,3] <- sd_depth^2
-  Hmat
-}
+
 
 # KALMAN FILTER
 CTCRW_filter <- function(y, Hmat, beta1_vec, beta2_vec,
@@ -163,7 +301,7 @@ neg_loglikelihood <- function(params, data_aug) {
   
   y <- as.matrix(data_aug[, c("x","y","depth")])
   
-  Hmat <- build_Hmat(nrow(data_aug), sd_xy, sd_depth)
+  Hmat <- build_Hmat_noerror(nrow(data_aug), sd_xy, sd_depth)
   
   delta <- rep(dt, nrow(data_aug))
   
@@ -294,14 +432,7 @@ y <- as.matrix(aug[, c("x","y","depth")])
 
 
 
-# CONSTANT H MATRIX
-build_Hmat <- function(N, sd_xy, sd_depth) {
-  Hmat <- matrix(NA_real_, N, 3)
-  Hmat[,1] <- sd_xy^2
-  Hmat[,2] <- sd_xy^2
-  Hmat[,3] <- sd_depth^2
-  Hmat
-}
+
 
 # KALMAN FILTER
 CTCRW_filter <- function(y, Hmat, beta1_vec, beta2_vec,
@@ -392,7 +523,7 @@ neg_loglikelihood <- function(params, data_aug) {
   
   y <- as.matrix(data_aug[, c("x","y","depth")])
   
-  Hmat <- build_Hmat(nrow(data_aug), sd_xy, sd_depth)
+  Hmat <- build_Hmat_noerror(nrow(data_aug), sd_xy, sd_depth)
   
   delta <- rep(dt, nrow(data_aug))
   
@@ -439,6 +570,460 @@ fit <- optim(
 
 p_hat <- exp(fit$par)
 p_hat
+
+
+
+
+###########################################################
+
+
+
+
+# Parameter values are re-obtained.
+
+library(MASS)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(plotly)
+set.seed(123)
+
+source("matrices.R")
+source("CTCRW_filter.R")
+source("CTCRW_smoother.R")
+source("neg_loglikelihood.R")
+
+# TRUE PARAMETERS
+beta1_true  <- 2.8
+beta2_true  <- 0.8
+sigma1_true <- 30
+sigma2_true <- 10
+
+s1 <- sigma1_true^2
+s2 <- sigma1_true^2
+s3 <- sigma2_true^2
+
+# TIME GRID
+N  <- 5000
+dt <- 15 / (24*60)
+time_vec <- seq(0, by = dt, length.out = N)
+
+# LATENT STATE: (x, vx, y, vy, depth, vdepth)
+X <- matrix(0, nrow = N, ncol = 6)
+X[1,] <- c(0, 0, 0, 0, -50, 0)
+
+
+
+# SIMULATE LATENT PROCESS
+Tmat <- makeT_R(beta1_true, beta2_true, dt)
+Qmat <- makeQ_R(beta1_true, beta2_true, s1, s2, s3, dt)
+
+for (i in 2:N) {
+  X[i,] <- Tmat %*% X[i-1,] + MASS::mvrnorm(1, rep(0,6), Qmat)
+}
+
+# CONSTANT SMALL MEASUREMENT ERROR
+sd_xy     <- 5     # horizontal SD
+sd_depth  <- 5     # depth SD
+
+obs_x     <- X[,1] + rnorm(N, 0, sd_xy)
+obs_y     <- X[,3] + rnorm(N, 0, sd_xy)
+obs_depth <- X[,5] + rnorm(N, 0, sd_depth)
+
+sim_data <- data.frame(
+  time  = ymd_hms("2020-01-01 00:00:00") + time_vec*86400,
+  x     = obs_x,
+  y     = obs_y,
+  depth = obs_depth
+)
+
+aug <- sim_data %>%
+  mutate(
+    Time = as.numeric(difftime(time, min(time), units = "days")) + 1,
+    orig_index = seq_len(n())
+  )
+
+y <- as.matrix(aug[, c("x","y","depth")])
+
+
+
+
+
+
+
+params_start <- c(
+  beta1  = log(1),
+  beta2  = log(1),
+  sigma1 = log(10),
+  sigma2 = log(10)
+)
+
+fit <- optim(
+  par      = params_start,
+  fn       = neg_loglikelihood,
+  data_aug = aug,
+  method   = "L-BFGS-B",
+  control  = list(trace = 1, maxit = 1000)
+)
+
+p_hat <- exp(fit$par)
+p_hat
+
+
+
+
+
+
+
+
+
+
+
+
+###########################################
+
+
+
+
+
+
+
+
+
+
+library(MASS)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(plotly)
+set.seed(123)
+
+source("matrices.R")
+source("CTCRW_filter.R")
+source("CTCRW_smoother.R")
+source("neg_loglikelihood.R")
+
+###############################################
+# MATRICES
+###############################################
+
+
+###############################################
+# TRUE PARAMETERS
+###############################################
+
+beta1_true  <- 2.8
+beta2_true  <- 0.8
+sigma1_true <- 30
+sigma2_true <- 10
+
+s1 <- sigma1_true^2
+s2 <- sigma1_true^2
+s3 <- sigma2_true^2
+
+###############################################
+# SIMULATION
+###############################################
+
+N  <- 5000
+dt <- 15 / (24*60)
+time_vec <- seq(0, by = dt, length.out = N)
+
+X <- matrix(0, nrow = N, ncol = 6)
+X[1,] <- c(0, 0, 0, 0, -50, 0)
+
+Tmat <- makeT_R(beta1_true, beta2_true, dt)
+Qmat <- makeQ_R(beta1_true, beta2_true, s1, s2, s3, dt)
+
+for (i in 2:N) {
+  X[i,] <- Tmat %*% X[i-1,] + MASS::mvrnorm(1, rep(0,6), Qmat)
+}
+
+sd_xy    <- 5
+sd_depth <- 5
+
+obs_x     <- X[,1] + rnorm(N, 0, sd_xy)
+obs_y     <- X[,3] + rnorm(N, 0, sd_xy)
+obs_depth <- X[,5] + rnorm(N, 0, sd_depth)
+
+sim_data <- data.frame(
+  time  = ymd_hms("2020-01-01 00:00:00") + time_vec*86400,
+  x     = obs_x,
+  y     = obs_y,
+  depth = obs_depth
+)
+
+aug <- sim_data %>%
+  mutate(
+    Time = as.numeric(difftime(time, min(time), units = "days")) + 1,
+    orig_index = seq_len(n())
+  )
+
+y <- as.matrix(aug[, c("x","y","depth")])
+
+###############################################
+# CONSTANT H MATRIX
+###############################################
+
+
+
+###############################################
+# FILTER
+###############################################
+
+
+
+###############################################
+# SMOOTHER
+###############################################
+
+
+
+###############################################
+# NEGATIVE LOG-LIKELIHOOD
+###############################################
+
+
+
+###############################################
+# OPTIMIZATION
+###############################################
+
+params_start <- c(
+  beta1  = log(1),
+  beta2  = log(1),
+  sigma1 = log(10),
+  sigma2 = log(10)
+)
+
+fit <- optim(
+  par      = params_start,
+  fn       = neg_loglikelihood_ConstantError,
+  data_aug = aug,
+  method   = "L-BFGS-B",
+  control  = list(trace = 1, maxit = 1000)
+)
+
+p_hat <- exp(fit$par)
+print(p_hat)
+
+
+
+
+
+
+
+
+
+################################
+################################
+
+
+
+
+
+
+
+
+
+
+
+# (using s_horiz and s_vert)
+
+
+library(MASS)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(plotly)
+set.seed(123)
+
+source("matrices.R")          # contains makeT() and makeQ()
+source("CTCRW_filter.R")      # contains CTCRW_filter1()
+source("CTCRW_smoother.R")    # contains CTCRW_smoother1()
+source("neg_loglikelihood.R") # we will call the updated 2-sigma version
+
+###############################################
+# TRUE PARAMETERS (2-sigma model)
+###############################################
+
+beta1_true  <- 2.8
+beta2_true  <- 0.8
+sigma1_true <- 30   # horizontal
+sigma2_true <- 10   # vertical
+
+s_horiz_true <- sigma1_true^2
+s_vert_true  <- sigma2_true^2
+
+###############################################
+# SIMULATION (2-sigma model)
+###############################################
+
+N  <- 5000
+dt <- 15 / (24*60)
+time_vec <- seq(0, by = dt, length.out = N)
+
+X <- matrix(0, nrow = N, ncol = 6)
+X[1,] <- c(0, 0, 0, 0, -50, 0)
+
+Tmat <- makeT(beta1_true, beta2_true, dt)
+Qmat <- makeQ(beta1_true, beta2_true, s_horiz_true, s_vert_true, dt)
+
+for (i in 2:N) {
+  X[i,] <- Tmat %*% X[i-1,] + MASS::mvrnorm(1, rep(0,6), Qmat)
+}
+
+# Add measurement error
+sd_xy    <- 5
+sd_depth <- 5
+
+obs_x     <- X[,1] + rnorm(N, 0, sd_xy)
+obs_y     <- X[,3] + rnorm(N, 0, sd_xy)
+obs_depth <- X[,5] + rnorm(N, 0, sd_depth)
+
+sim_data <- data.frame(
+  time  = ymd_hms("2020-01-01 00:00:00") + time_vec*86400,
+  x     = obs_x,
+  y     = obs_y,
+  depth = obs_depth
+)
+
+aug <- sim_data %>%
+  mutate(
+    Time = as.numeric(difftime(time, min(time), units = "days")) + 1,
+    orig_index = seq_len(n())
+  )
+
+y <- as.matrix(aug[, c("x","y","depth")])
+
+
+###############################################
+# OPTIMIZATION
+###############################################
+
+params_start <- c(
+  beta1  = log(1),
+  beta2  = log(1),
+  sigma1 = log(10),
+  sigma2 = log(10)
+)
+
+fit <- optim(
+  par      = params_start,
+  fn       = neg_loglikelihood_ConstantError2,
+  data_aug = aug,
+  method   = "L-BFGS-B",
+  control  = list(trace = 1, maxit = 1000)
+)
+
+p_hat <- exp(fit$par)
+print(p_hat)
+
+
+
+
+
+
+#################################
+
+
+
+
+# uses s_horiz and s_vert, and simulation function
+
+
+
+
+
+
+library(MASS)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(plotly)
+set.seed(123)
+
+source("matrices.R")          
+source("CTCRW_filter.R")      
+source("CTCRW_smoother.R")    
+source("neg_loglikelihood.R") 
+source("simulate_CTCRW_3D.R") # NEW
+
+###############################################
+# TRUE PARAMETERS (2-sigma model)
+###############################################
+
+beta1_true  <- 2.8
+beta2_true  <- 0.8
+sigma1_true <- 30
+sigma2_true <- 10
+
+###############################################
+# SIMULATION USING THE NEW FUNCTION
+###############################################
+
+N  <- 5000
+dt <- 15 / (24*60)
+
+sim_data <- simulate_CTCRW_3D(
+  N           = N,
+  dt          = dt,
+  beta1_true  = beta1_true,
+  beta2_true  = beta2_true,
+  sigma1_true = sigma1_true,
+  sigma2_true = sigma2_true
+)
+
+# Add constant measurement error
+sd_xy    <- 5
+sd_depth <- 5
+
+sim_data$x     <- sim_data$x     + rnorm(N, 0, sd_xy)
+sim_data$y     <- sim_data$y     + rnorm(N, 0, sd_xy)
+sim_data$depth <- sim_data$depth + rnorm(N, 0, sd_depth)
+
+aug <- sim_data %>%
+  mutate(
+    Time = as.numeric(difftime(time, min(time), units = "days")) + 1,
+    orig_index = seq_len(n())
+  )
+
+y <- as.matrix(aug[, c("x","y","depth")])
+
+###############################################
+# OPTIMIZATION
+###############################################
+
+params_start <- c(
+  beta1  = log(1),
+  beta2  = log(1),
+  sigma1 = log(10),
+  sigma2 = log(10)
+)
+
+fit <- optim(
+  par      = params_start,
+  fn       = neg_loglikelihood_ConstantError2,
+  data_aug = aug,
+  method   = "L-BFGS-B",
+  control  = list(trace = 1, maxit = 1000)
+)
+
+p_hat <- exp(fit$par)
+print(p_hat)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
