@@ -413,31 +413,37 @@ build_Hmat_LinearError2 <- function(data_aug, var0_xy, var1_xy, sd_depth) {
 
 
 
+
+
+
+
+
+
 neg_loglikelihood_LinearError2 <- function(params, data_aug) {
   
   beta1  <- exp(params["beta1"])
   beta2  <- exp(params["beta2"])
-  sigma1 <- exp(params["sigma1"])   # horizontal process noise SD
-  sigma2 <- exp(params["sigma2"])   # vertical process noise SD
+  sigma1 <- exp(params["sigma1"])
+  sigma2 <- exp(params["sigma2"])
   
   y <- as.matrix(data_aug[, c("x","y","depth")])
-  delta <- rep(dt, nrow(data_aug))
   
-  # 2-sigma process noise
+  # compute dt inside the function
+  delta <- c(NA, diff(data_aug$Time))
+  delta[1] <- delta[2]   # or small default
+  
   s_horiz <- sigma1^2
   s_vert  <- sigma2^2
   
   beta1_vec <- rep(beta1, nrow(data_aug))
   beta2_vec <- rep(beta2, nrow(data_aug))
   
-  # Build H matrix (linear HDOP)
   var0_xy  <- 0
   var1_xy  <- 0.1
   sd_depth <- 10
   
   Hmat <- build_Hmat_LinearError2(data_aug, var0_xy, var1_xy, sd_depth)
   
-  # Initial state
   a <- c(
     ifelse(is.na(y[1,1]), 0, y[1,1]), 0,
     ifelse(is.na(y[1,2]), 0, y[1,2]), 0,
@@ -445,7 +451,6 @@ neg_loglikelihood_LinearError2 <- function(params, data_aug) {
   )
   P <- diag(6) * 1e2
   
-  # 2-sigma filter
   filt <- CTCRW_filter1(
     y         = y,
     Hmat      = Hmat,
@@ -460,14 +465,6 @@ neg_loglikelihood_LinearError2 <- function(params, data_aug) {
   
   -filt$ll
 }
-
-
-
-
-
-
-
-
 
 
 
