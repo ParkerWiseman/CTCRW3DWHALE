@@ -258,7 +258,7 @@ exp(fit$par)
 
 
 
-
+# GOOD CODE
 # uses s_horiz and s_vert, and simulation function
 
 

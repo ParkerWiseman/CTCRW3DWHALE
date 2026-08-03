@@ -4,12 +4,8 @@
 
 
 
-
-
-
-
 CTCRW_filter1 <- function(y, Hmat, beta1_vec, beta2_vec,
-                          s_horiz, s_vert, delta, a, P) {
+                            s_horiz, s_vert, delta, a, P) {
   
   N <- nrow(y)
   
@@ -41,7 +37,7 @@ CTCRW_filter1 <- function(y, Hmat, beta1_vec, beta2_vec,
     # mask missing observations
     obs_mask <- !is.na(y[i, ])
     
-    # if all three are missing, skip update
+    # if all three are missing, just propagate without update
     if (!any(obs_mask)) {
       aest <- a_pred
       Pest <- P_pred
@@ -70,6 +66,7 @@ CTCRW_filter1 <- function(y, Hmat, beta1_vec, beta2_vec,
   
   list(ll = ll, a_f = a_f, P_f = P_f, a_p = a_p, P_p = P_p)
 }
+
 
 
 

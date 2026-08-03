@@ -929,6 +929,23 @@ print(p_hat)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# GOOD CODE
+
+
 # uses s_horiz and s_vert, and simulation function
 
 

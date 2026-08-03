@@ -128,7 +128,8 @@ CTCRW_filter10 <- function(y, Hmat, beta1_vec, beta2_vec,
 
 
 
-
+# USE THIS VERSION AND CALL IT "CTCRW_filter1" for noerror, constanterror, and linearhdop
+# simulation code files.
 # change name back to CTCRW_filter1
 CTCRW_filter111 <- function(y, Hmat, beta1_vec, beta2_vec,
                             s_horiz, s_vert, delta, a, P) {
@@ -199,7 +200,7 @@ CTCRW_filter111 <- function(y, Hmat, beta1_vec, beta2_vec,
 
 
 
-
+########################################################
 
 
 
