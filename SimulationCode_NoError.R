@@ -200,7 +200,7 @@ p_hat
 
 
 
-
+# IGNORE ALL ABOVE CODE
 # GOOD CODE
 # uses s_horiz and s_vert, and simulation function
 
@@ -254,6 +254,209 @@ fit <- optim(
 )
 
 exp(fit$par)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#######################################
+
+
+# August 12, 2026
+
+
+
+library(MASS)
+library(dplyr)
+library(lubridate)
+
+source("matrices.R")
+source("CTCRW_filter.R")
+source("CTCRW_smoother.R")
+source("neg_loglikelihood.R")
+source("simulate_CTCRW_3D.R")
+
+# --- Simulation ---
+N  <- 5000
+dt <- 15 / (24*60)
+
+sim_data <- simulate_CTCRW_3D(
+  N           = N,
+  dt          = dt,
+  beta1_true  = 2.8,
+  beta2_true  = 0.8,
+  sigma1_true = 30,
+  sigma2_true = 10
+)
+
+aug <- sim_data %>%
+  mutate(
+    Time = as.numeric(difftime(time, min(time), units = "days")),
+    orig_index = seq_len(n())
+  )
+
+y <- as.matrix(aug[, c("x","y","depth")])
+
+# --- Optimization ---
+params_start <- c(
+  beta1  = log(1),
+  beta2  = log(1),
+  sigma1 = log(10),
+  sigma2 = log(10)
+)
+
+fit <- optim(
+  par      = params_start,
+  fn       = function(p) neg_loglikelihood(p, aug, error_model = "noerror"),
+  method   = "L-BFGS-B",
+  control  = list(trace = 1, maxit = 1000)
+)
+
+exp(fit$par)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##########################################
+
+# histograms from multiple simulations
+
+
+
+library(MASS)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+
+source("matrices.R")
+source("CTCRW_filter.R")
+source("CTCRW_smoother.R")
+source("neg_loglikelihood.R")
+source("simulate_CTCRW_3D.R")
+
+set.seed(123)
+
+###############################################
+# TRUE PARAMETERS
+###############################################
+
+beta1_true  <- 2.8
+beta2_true  <- 0.8
+sigma1_true <- 30
+sigma2_true <- 10
+
+###############################################
+# MONTE CARLO SETTINGS
+###############################################
+
+n_sims <- 15
+N      <- 5000
+dt     <- 15 / (24*60)
+
+# storage
+estimates <- data.frame(
+  beta1 = numeric(n_sims),
+  beta2 = numeric(n_sims),
+  sigma1 = numeric(n_sims),
+  sigma2 = numeric(n_sims)
+)
+
+###############################################
+# MONTE CARLO LOOP
+###############################################
+
+for (s in 1:n_sims) {
+  
+  sim_data <- simulate_CTCRW_3D(
+    N           = N,
+    dt          = dt,
+    beta1_true  = beta1_true,
+    beta2_true  = beta2_true,
+    sigma1_true = sigma1_true,
+    sigma2_true = sigma2_true
+  )
+  
+  aug <- sim_data %>%
+    mutate(
+      Time = as.numeric(difftime(time, min(time), units = "days")),
+      orig_index = seq_len(n())
+    )
+  
+  params_start <- c(
+    beta1  = log(1),
+    beta2  = log(1),
+    sigma1 = log(10),
+    sigma2 = log(10)
+  )
+  
+  fit <- optim(
+    par      = params_start,
+    fn       = function(p) neg_loglikelihood(p, aug, error_model = "noerror"),
+    method   = "L-BFGS-B",
+    control  = list(trace = 0, maxit = 1000)
+  )
+  
+  p_hat <- exp(fit$par)
+  
+  estimates[s, ] <- p_hat
+}
+
+###############################################
+# HISTOGRAMS
+###############################################
+
+par(mfrow=c(2,2))
+
+hist(estimates$beta1, main="β1 estimates", xlab="beta1", col="skyblue")
+abline(v=beta1_true, col="red", lwd=2)
+
+hist(estimates$beta2, main="β2 estimates", xlab="beta2", col="skyblue")
+abline(v=beta2_true, col="red", lwd=2)
+
+hist(estimates$sigma1, main="σ1 estimates", xlab="sigma1", col="skyblue")
+abline(v=sigma1_true, col="red", lwd=2)
+
+hist(estimates$sigma2, main="σ2 estimates", xlab="sigma2", col="skyblue")
+abline(v=sigma2_true, col="red", lwd=2)
+
+par(mfrow=c(1,1))
+
+###############################################
+# PRINT SUMMARY STATISTICS
+###############################################
+
+summary(estimates)
+
+
+
+
+
+
 
 
 

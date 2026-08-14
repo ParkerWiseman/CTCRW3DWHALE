@@ -469,6 +469,136 @@ neg_loglikelihood_LinearError2 <- function(params, data_aug) {
 
 
 
+#####################################
+# August 12, 2026
+
+
+
+neg_loglikelihood <- function(params, data_aug, error_model = c("noerror","constanterror","linearerror")) {
+  
+  error_model <- match.arg(error_model)
+  
+  # unpack parameters
+  beta1  <- exp(params["beta1"])
+  beta2  <- exp(params["beta2"])
+  sigma1 <- exp(params["sigma1"])
+  sigma2 <- exp(params["sigma2"])
+  
+  # data
+  y <- as.matrix(data_aug[, c("x","y","depth")])
+  
+  # delta (time step)
+  delta <- c(NA, diff(data_aug$Time))
+  delta[1] <- delta[2]
+  
+  # process noise (2-sigma model)
+  s_horiz <- sigma1^2
+  s_vert  <- sigma2^2
+  
+  beta1_vec <- rep(beta1, nrow(data_aug))
+  beta2_vec <- rep(beta2, nrow(data_aug))
+  
+  #### ----------------------------------------------------
+  #### BUILD H MATRIX BASED ON error_model
+  #### ----------------------------------------------------
+  
+  if (error_model == "noerror") {
+    
+    eps <- 1e-6
+    Hmat <- matrix(eps, nrow(data_aug), 3)
+    
+  } else if (error_model == "constanterror") {
+    
+    sd_xy    <- 5
+    sd_depth <- 10
+    
+    Hmat <- matrix(NA_real_, nrow(data_aug), 3)
+    Hmat[,1] <- sd_xy^2
+    Hmat[,2] <- sd_xy^2
+    Hmat[,3] <- sd_depth^2
+    
+  } else if (error_model == "linearerror") {
+    
+    var0_xy  <- 0
+    var1_xy  <- 0.1
+    sd_depth <- 10
+    
+    hd <- data_aug$hdop
+    N  <- nrow(data_aug)
+    
+    Hmat <- matrix(NA_real_, N, 3)
+    
+    for (i in 1:N) {
+      if (!is.na(hd[i])) {
+        var_xy_i <- var0_xy + var1_xy * hd[i]
+        Hmat[i,1] <- var_xy_i
+        Hmat[i,2] <- var_xy_i
+      } else {
+        Hmat[i,1] <- 1e6
+        Hmat[i,2] <- 1e6
+      }
+      Hmat[i,3] <- sd_depth^2
+    }
+  }
+  
+  #### ----------------------------------------------------
+  #### INITIAL STATE
+  #### ----------------------------------------------------
+  
+  a <- c(
+    ifelse(is.na(y[1,1]), 0, y[1,1]), 0,
+    ifelse(is.na(y[1,2]), 0, y[1,2]), 0,
+    ifelse(is.na(y[1,3]), 0, y[1,3]), 0
+  )
+  
+  P <- diag(6) * 1e2
+  
+  #### ----------------------------------------------------
+  #### FILTER CALL
+  #### ----------------------------------------------------
+  
+  filt <- CTCRW_filter1(
+    y         = y,
+    Hmat      = Hmat,
+    beta1_vec = beta1_vec,
+    beta2_vec = beta2_vec,
+    s_horiz   = s_horiz,
+    s_vert    = s_vert,
+    delta     = delta,
+    a         = a,
+    P         = P
+  )
+  
+  #### ----------------------------------------------------
+  #### RETURN NEGATIVE LOG-LIKELIHOOD
+  #### ----------------------------------------------------
+  
+  -filt$ll
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -942,7 +942,7 @@ print(p_hat)
 
 
 
-
+# IGNORE ALL ABOVE CODE
 # GOOD CODE
 
 
@@ -1037,6 +1037,85 @@ print(p_hat)
 
 
 
+############################
+
+# August 12, 2026
+
+
+library(MASS)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(plotly)
+set.seed(123)
+
+source("matrices.R")
+source("CTCRW_filter.R")
+source("CTCRW_smoother.R")
+source("neg_loglikelihood.R")
+source("simulate_CTCRW_3D.R")
+
+###############################################
+# TRUE PARAMETERS (2-sigma model)
+###############################################
+
+beta1_true  <- 2.8
+beta2_true  <- 0.8
+sigma1_true <- 30
+sigma2_true <- 10
+
+###############################################
+# SIMULATION USING THE NEW FUNCTION
+###############################################
+
+N  <- 5000
+dt <- 15 / (24*60)
+
+sim_data <- simulate_CTCRW_3D(
+  N           = N,
+  dt          = dt,
+  beta1_true  = beta1_true,
+  beta2_true  = beta2_true,
+  sigma1_true = sigma1_true,
+  sigma2_true = sigma2_true
+)
+
+# Add constant measurement error
+sd_xy    <- 5
+sd_depth <- 5
+
+sim_data$x     <- sim_data$x     + rnorm(N, 0, sd_xy)
+sim_data$y     <- sim_data$y     + rnorm(N, 0, sd_xy)
+sim_data$depth <- sim_data$depth + rnorm(N, 0, sd_depth)
+
+aug <- sim_data %>%
+  mutate(
+    Time = as.numeric(difftime(time, min(time), units = "days")),
+    orig_index = seq_len(n())
+  )
+
+y <- as.matrix(aug[, c("x","y","depth")])
+
+###############################################
+# OPTIMIZATION USING UNIFIED LIKELIHOOD
+###############################################
+
+params_start <- c(
+  beta1  = log(1),
+  beta2  = log(1),
+  sigma1 = log(10),
+  sigma2 = log(10)
+)
+
+fit <- optim(
+  par      = params_start,
+  fn       = function(p) neg_loglikelihood(p, aug, error_model = "constanterror"),
+  method   = "L-BFGS-B",
+  control  = list(trace = 1, maxit = 1000)
+)
+
+p_hat <- exp(fit$par)
+print(p_hat)
 
 
 
@@ -1049,4 +1128,134 @@ print(p_hat)
 
 
 
+
+
+
+
+
+
+
+
+###################################
+
+# histograms from multiple simulations
+
+
+
+
+library(MASS)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+
+source("matrices.R")
+source("CTCRW_filter.R")
+source("CTCRW_smoother.R")
+source("neg_loglikelihood.R")
+source("simulate_CTCRW_3D.R")
+
+set.seed(123)
+
+###############################################
+# TRUE PARAMETERS (2-sigma model)
+###############################################
+
+beta1_true  <- 2.8
+beta2_true  <- 0.8
+sigma1_true <- 30
+sigma2_true <- 10
+
+###############################################
+# MONTE CARLO SETTINGS
+###############################################
+
+n_sims <- 15
+N      <- 5000
+dt     <- 15 / (24*60)
+
+# storage for parameter estimates
+estimates <- data.frame(
+  beta1  = numeric(n_sims),
+  beta2  = numeric(n_sims),
+  sigma1 = numeric(n_sims),
+  sigma2 = numeric(n_sims)
+)
+
+###############################################
+# MONTE CARLO LOOP
+###############################################
+
+for (s in 1:n_sims) {
+  
+  # --- Simulate latent CTCRW ---
+  sim_data <- simulate_CTCRW_3D(
+    N           = N,
+    dt          = dt,
+    beta1_true  = beta1_true,
+    beta2_true  = beta2_true,
+    sigma1_true = sigma1_true,
+    sigma2_true = sigma2_true
+  )
+  
+  # --- Add constant measurement error ---
+  sd_xy    <- 5
+  sd_depth <- 5
+  
+  sim_data$x     <- sim_data$x     + rnorm(N, 0, sd_xy)
+  sim_data$y     <- sim_data$y     + rnorm(N, 0, sd_xy)
+  sim_data$depth <- sim_data$depth + rnorm(N, 0, sd_depth)
+  
+  # --- Build augmented dataset ---
+  aug <- sim_data %>%
+    mutate(
+      Time = as.numeric(difftime(time, min(time), units = "days")),
+      orig_index = seq_len(n())
+    )
+  
+  # --- Optimization ---
+  params_start <- c(
+    beta1  = log(1),
+    beta2  = log(1),
+    sigma1 = log(10),
+    sigma2 = log(10)
+  )
+  
+  fit <- optim(
+    par      = params_start,
+    fn       = function(p) neg_loglikelihood(p, aug, error_model = "constanterror"),
+    method   = "L-BFGS-B",
+    control  = list(trace = 0, maxit = 1000)
+  )
+  
+  p_hat <- exp(fit$par)
+  
+  # store estimates
+  estimates[s, ] <- p_hat
+}
+
+###############################################
+# HISTOGRAMS OF PARAMETER ESTIMATES
+###############################################
+
+par(mfrow=c(2,2))
+
+hist(estimates$beta1, main="β1 estimates", xlab="beta1", col="skyblue")
+abline(v=beta1_true, col="red", lwd=2)
+
+hist(estimates$beta2, main="β2 estimates", xlab="beta2", col="skyblue")
+abline(v=beta2_true, col="red", lwd=2)
+
+hist(estimates$sigma1, main="σ1 estimates", xlab="sigma1", col="skyblue")
+abline(v=sigma1_true, col="red", lwd=2)
+
+hist(estimates$sigma2, main="σ2 estimates", xlab="sigma2", col="skyblue")
+abline(v=sigma2_true, col="red", lwd=2)
+
+par(mfrow=c(1,1))
+
+###############################################
+# SUMMARY STATISTICS
+###############################################
+
+summary(estimates)
 
