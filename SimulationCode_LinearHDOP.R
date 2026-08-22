@@ -492,6 +492,325 @@ exp(fit$par)
 
 
 
+##############################
+
+# Same as above code but with plots
+
+
+
+
+
+
+
+library(MASS)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(plotly)
+set.seed(123)
+
+source("matrices.R")
+source("CTCRW_filter.R")
+source("CTCRW_smoother.R")
+source("neg_loglikelihood.R")
+source("simulate_CTCRW_3D.R")
+
+###############################################
+# TRUE PARAMETERS (2-sigma model)
+###############################################
+
+beta1_true  <- 2.8
+beta2_true  <- 0.8
+sigma1_true <- 30
+sigma2_true <- 10
+
+###############################################
+# SIMULATION OF LATENT CTCRW
+###############################################
+
+N  <- 5000
+dt <- 15 / (24*60)
+
+sim_latent <- simulate_CTCRW_3D(
+  N           = N,
+  dt          = dt,
+  beta1_true  = beta1_true,
+  beta2_true  = beta2_true,
+  sigma1_true = sigma1_true,
+  sigma2_true = sigma2_true
+)
+
+###############################################
+# LINEAR HDOP MEASUREMENT ERROR MODEL
+###############################################
+
+obs_type <- rbinom(N, 1, 0.7)   # 70% depth-only, 30% GPS
+
+obs_x     <- rep(NA, N)
+obs_y     <- rep(NA, N)
+obs_depth <- rep(NA, N)
+hdop      <- rep(NA, N)
+
+var0_xy  <- 0
+var1_xy  <- 0.1
+sd_depth <- 10
+
+sd_xy_fun <- function(h) sqrt(var0_xy + var1_xy * h)
+
+for (i in 1:N) {
+  if (obs_type[i] == 1) {
+    # depth-only observation
+    obs_depth[i] <- sim_latent$depth[i] + rnorm(1, 0, sd_depth)
+    hdop[i]      <- NA
+  } else {
+    # GPS observation with HDOP-dependent noise
+    hdop[i]  <- runif(1, 1, 25)
+    sd_xy_i  <- sd_xy_fun(hdop[i])
+    obs_x[i] <- sim_latent$x[i] + rnorm(1, 0, sd_xy_i)
+    obs_y[i] <- sim_latent$y[i] + rnorm(1, 0, sd_xy_i)
+  }
+}
+
+sim_data <- data.frame(
+  time  = sim_latent$time,
+  x     = obs_x,
+  y     = obs_y,
+  depth = obs_depth,
+  hdop  = hdop
+)
+
+aug <- sim_data %>%
+  mutate(
+    Time = as.numeric(difftime(time, min(time), units = "days")),
+    orig_index = seq_len(n())
+  )
+
+y <- as.matrix(aug[, c("x","y","depth")])
+
+###############################################
+# OPTIMIZATION USING UNIFIED LINEAR-HDOP LIKELIHOOD
+###############################################
+
+params_start <- c(
+  beta1  = log(0.5),
+  beta2  = log(0.5),
+  sigma1 = log(10),
+  sigma2 = log(10)
+)
+
+fit <- optim(
+  par      = params_start,
+  fn       = function(p) neg_loglikelihood(p, aug, error_model = "linearerror"),
+  method   = "L-BFGS-B",
+  control  = list(trace = 1, maxit = 1000)
+)
+
+p_hat <- exp(fit$par)
+print(p_hat)
+
+beta1_hat  <- p_hat["beta1"]
+beta2_hat  <- p_hat["beta2"]
+sigma1_hat <- p_hat["sigma1"]
+sigma2_hat <- p_hat["sigma2"]
+
+s_horiz_hat <- sigma1_hat^2
+s_vert_hat  <- sigma2_hat^2
+
+###############################################
+# BUILD LINEAR HDOP H MATRIX
+###############################################
+
+Hmat <- build_Hmat_LinearError2(aug, var0_xy, var1_xy, sd_depth)
+
+###############################################
+# DELTA (MATCHES LIKELIHOOD)
+###############################################
+
+delta_raw   <- diff(aug$Time)
+delta_fixed <- pmax(delta_raw, 1e-5)
+delta       <- c(delta_fixed[1], delta_fixed)
+
+###############################################
+# INITIAL STATE
+###############################################
+
+a0 <- c(
+  ifelse(is.na(y[1,1]), 0, y[1,1]), 0,
+  ifelse(is.na(y[1,2]), 0, y[1,2]), 0,
+  ifelse(is.na(y[1,3]), 0, y[1,3]), 0
+)
+P0 <- diag(6) * 1e2
+
+###############################################
+# FILTER
+###############################################
+
+filt <- CTCRW_filter1(
+  y         = y,
+  Hmat      = Hmat,
+  beta1_vec = rep(beta1_hat, N),
+  beta2_vec = rep(beta2_hat, N),
+  s_horiz   = s_horiz_hat,
+  s_vert    = s_vert_hat,
+  delta     = delta,
+  a         = a0,
+  P         = P0
+)
+
+###############################################
+# SMOOTHER
+###############################################
+
+smooth <- CTCRW_smoother1(
+  filter_out = filt,
+  beta1_vec  = rep(beta1_hat, N),
+  beta2_vec  = rep(beta2_hat, N),
+  s_horiz    = s_horiz_hat,
+  s_vert     = s_vert_hat,
+  delta      = delta
+)
+
+smooth_track <- as.data.frame(smooth$a_s)
+names(smooth_track) <- c("x","vx","y","vy","depth","vdepth")
+smooth_track$time <- aug$time
+
+###############################################
+# 3D PLOT (ROBUST VERSION)
+###############################################
+
+plot_ly() %>%
+  add_trace(
+    data = smooth_track,
+    x = ~x, y = ~y, z = ~depth,
+    type = "scatter3d",
+    mode = "lines",
+    line = list(color = 'red', width = 6),
+    name = "Smoothed"
+  ) %>%
+  add_trace(
+    data = aug,
+    x = ~x, y = ~y, z = ~depth,
+    type = "scatter3d",
+    mode = "markers",
+    marker = list(color = 'blue', size = 2),
+    name = "Observed"
+  ) %>%
+  layout(
+    title = "3D CTCRW Simulation (Linear HDOP Error): Observed (blue) vs Smoothed (red)",
+    scene = list(
+      xaxis = list(title = "X"),
+      yaxis = list(title = "Y"),
+      zaxis = list(title = "Depth")
+    )
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+###############################################
+# DEPTH vs TIME PLOT
+###############################################
+
+ggplot() +
+  geom_point(
+    data = aug,
+    aes(x = time, y = depth),
+    color = "blue",
+    alpha = 0.4,
+    size = 1
+  ) +
+  geom_line(
+    data = smooth_track,
+    aes(x = time, y = depth),
+    color = "red",
+    linewidth = 1
+  ) +
+  theme_minimal() +
+  labs(
+    title = "Depth vs Time: Observed (blue) vs Smoothed (red)",
+    x = "Time",
+    y = "Depth"
+  )
+
+
+
+
+
+
+
+###############################################
+# X vs TIME
+###############################################
+
+ggplot() +
+  geom_point(
+    data = aug,
+    aes(x = time, y = x),
+    color = "blue",
+    alpha = 0.4,
+    size = 1
+  ) +
+  geom_line(
+    data = smooth_track,
+    aes(x = time, y = x),
+    color = "red",
+    linewidth = 1
+  ) +
+  theme_minimal() +
+  labs(
+    title = "X vs Time: Observed (blue) vs Smoothed (red)",
+    x = "Time",
+    y = "X"
+  )
+
+
+
+
+
+###############################################
+# Y vs TIME
+###############################################
+
+ggplot() +
+  geom_point(
+    data = aug,
+    aes(x = time, y = y),
+    color = "blue",
+    alpha = 0.4,
+    size = 1
+  ) +
+  geom_line(
+    data = smooth_track,
+    aes(x = time, y = y),
+    color = "red",
+    linewidth = 1
+  ) +
+  theme_minimal() +
+  labs(
+    title = "Y vs Time: Observed (blue) vs Smoothed (red)",
+    x = "Time",
+    y = "Y"
+  )
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ###################################
@@ -531,7 +850,7 @@ sigma2_true <- 10
 # MONTE CARLO SETTINGS
 ###############################################
 
-n_sims <- 50
+n_sims <- 15
 N      <- 5000
 dt     <- 15 / (24*60)
 

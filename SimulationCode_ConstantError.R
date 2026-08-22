@@ -1134,6 +1134,204 @@ print(p_hat)
 
 
 
+################################
+# Same as above code but with plots
+
+
+
+
+library(MASS)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(plotly)
+set.seed(123)
+
+source("matrices.R")
+source("CTCRW_filter.R")
+source("CTCRW_smoother.R")
+source("neg_loglikelihood.R")
+source("simulate_CTCRW_3D.R")
+
+###############################################
+# TRUE PARAMETERS (2-sigma model)
+###############################################
+
+beta1_true  <- 2.8
+beta2_true  <- 0.8
+sigma1_true <- 30
+sigma2_true <- 10
+
+###############################################
+# SIMULATION USING THE NEW FUNCTION
+###############################################
+
+N  <- 5000
+dt <- 15 / (24*60)
+
+sim_data <- simulate_CTCRW_3D(
+  N           = N,
+  dt          = dt,
+  beta1_true  = beta1_true,
+  beta2_true  = beta2_true,
+  sigma1_true = sigma1_true,
+  sigma2_true = sigma2_true
+)
+
+# Add constant measurement error
+sd_xy    <- 5
+sd_depth <- 5
+
+sim_data$x     <- sim_data$x     + rnorm(N, 0, sd_xy)
+sim_data$y     <- sim_data$y     + rnorm(N, 0, sd_xy)
+sim_data$depth <- sim_data$depth + rnorm(N, 0, sd_depth)
+
+aug <- sim_data %>%
+  mutate(
+    Time = as.numeric(difftime(time, min(time), units = "days")),
+    orig_index = seq_len(n())
+  )
+
+y <- as.matrix(aug[, c("x","y","depth")])
+
+###############################################
+# OPTIMIZATION USING UNIFIED CONSTANT-ERROR LIKELIHOOD
+###############################################
+
+params_start <- c(
+  beta1  = log(1),
+  beta2  = log(1),
+  sigma1 = log(10),
+  sigma2 = log(10)
+)
+
+fit <- optim(
+  par      = params_start,
+  fn       = function(p) neg_loglikelihood(p, aug, error_model = "constanterror"),
+  method   = "L-BFGS-B",
+  control  = list(trace = 1, maxit = 1000)
+)
+
+p_hat <- exp(fit$par)
+print(p_hat)
+
+beta1_hat  <- p_hat["beta1"]
+beta2_hat  <- p_hat["beta2"]
+sigma1_hat <- p_hat["sigma1"]
+sigma2_hat <- p_hat["sigma2"]
+
+s_horiz_hat <- sigma1_hat^2
+s_vert_hat  <- sigma2_hat^2
+
+###############################################
+# BUILD CONSTANT-ERROR H MATRIX
+###############################################
+
+Hmat <- build_Hmat_ConstantError2(aug, sd_xy, sd_depth)
+
+###############################################
+# DELTA (MATCHES LIKELIHOOD)
+###############################################
+
+delta_raw   <- diff(aug$Time)
+delta_fixed <- pmax(delta_raw, 1e-5)
+delta       <- c(delta_fixed[1], delta_fixed)
+
+###############################################
+# INITIAL STATE
+###############################################
+
+a0 <- c(
+  y[1,1], 0,
+  y[1,2], 0,
+  y[1,3], 0
+)
+P0 <- diag(6) * 1e2
+
+###############################################
+# FILTER
+###############################################
+
+filt <- CTCRW_filter1(
+  y         = y,
+  Hmat      = Hmat,
+  beta1_vec = rep(beta1_hat, N),
+  beta2_vec = rep(beta2_hat, N),
+  s_horiz   = s_horiz_hat,
+  s_vert    = s_vert_hat,
+  delta     = delta,
+  a         = a0,
+  P         = P0
+)
+
+###############################################
+# SMOOTHER
+###############################################
+
+smooth <- CTCRW_smoother1(
+  filter_out = filt,
+  beta1_vec  = rep(beta1_hat, N),
+  beta2_vec  = rep(beta2_hat, N),
+  s_horiz    = s_horiz_hat,
+  s_vert     = s_vert_hat,
+  delta      = delta
+)
+
+smooth_track <- as.data.frame(smooth$a_s)
+names(smooth_track) <- c("x","vx","y","vy","depth","vdepth")
+smooth_track$time <- aug$time
+
+###############################################
+# 3D PLOT (ROBUST VERSION)
+###############################################
+
+plot_ly() %>%
+  add_trace(
+    data = smooth_track,
+    x = ~x, y = ~y, z = ~depth,
+    type = "scatter3d",
+    mode = "lines",
+    line = list(color = 'red', width = 6),
+    name = "Smoothed"
+  ) %>%
+  add_trace(
+    data = aug,
+    x = ~x, y = ~y, z = ~depth,
+    type = "scatter3d",
+    mode = "markers",
+    marker = list(color = 'blue', size = 2),
+    name = "Observed"
+  ) %>%
+  layout(
+    title = "3D CTCRW Simulation (Constant Error): Observed (blue) vs Smoothed (red)",
+    scene = list(
+      xaxis = list(title = "X"),
+      yaxis = list(title = "Y"),
+      zaxis = list(title = "Depth")
+    )
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ###################################
