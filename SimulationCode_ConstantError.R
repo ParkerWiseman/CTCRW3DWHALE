@@ -1227,7 +1227,7 @@ s_vert_hat  <- sigma2_hat^2
 # BUILD CONSTANT-ERROR H MATRIX
 ###############################################
 
-Hmat <- build_Hmat_ConstantError2(aug, sd_xy, sd_depth)
+Hmat <- build_Hmat_ConstantError(aug, sd_xy, sd_depth)
 
 ###############################################
 # DELTA (MATCHES LIKELIHOOD)

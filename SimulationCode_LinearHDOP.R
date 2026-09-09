@@ -620,7 +620,7 @@ s_vert_hat  <- sigma2_hat^2
 # BUILD LINEAR HDOP H MATRIX
 ###############################################
 
-Hmat <- build_Hmat_LinearError2(aug, var0_xy, var1_xy, sd_depth)
+Hmat <- build_Hmat_LinearError(aug, var0_xy, var1_xy, sd_depth)
 
 ###############################################
 # DELTA (MATCHES LIKELIHOOD)
