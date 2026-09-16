@@ -89,6 +89,21 @@ beta2_hat  <- p_hat["beta2"]
 sigma1_hat <- p_hat["sigma1"]
 sigma2_hat <- p_hat["sigma2"]
 
+############################################################
+# INTERPRETABLE PARAMETERS — tau and nu
+############################################################
+
+tau1_hat <- 1 / beta1_hat
+tau2_hat <- 1 / beta2_hat
+
+nu1_hat <- sigma1_hat / sqrt(2 * beta1_hat)
+nu2_hat <- sigma2_hat / sqrt(2 * beta2_hat)
+
+cat("Horizontal autocorrelation time tau1 (s):", tau1_hat, "\n")
+cat("Vertical autocorrelation time tau2 (s):", tau2_hat, "\n")
+cat("Horizontal RMS speed nu1 (m/s):", nu1_hat, "\n")
+cat("Vertical RMS speed nu2 (m/s):", nu2_hat, "\n")
+
 s_horiz_hat <- sigma1_hat^2
 s_vert_hat  <- sigma2_hat^2
 
@@ -111,7 +126,8 @@ Hmat <- build_Hmat_LinearError(
 # DELTA (seconds)
 ############################################################
 
-delta_raw <- c(NA, diff(aug$Time_sec))
+delta_raw <- c(diff(aug$Time_sec), 1)
+#delta_raw <- c(NA, diff(aug$Time_sec))
 delta_raw[1] <- delta_raw[2]
 
 delta <- pmax(delta_raw, 1)
