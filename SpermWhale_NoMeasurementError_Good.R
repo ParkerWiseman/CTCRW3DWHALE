@@ -1,6 +1,11 @@
 
 
 
+#########
+
+# September 16, 2026
+
+
 ############################################################
 # CTCRW 3D SPERM WHALE MODEL — tiny measurement error & estimating all parameters
 # & changing the way time intervals are computed
@@ -258,5 +263,22 @@ ggplot() +
 
 
 
+# Differences between this code and the code in "SpermWhale_LinearHDOP.R":
+#1. This code uses constant tiny measurement error:
+
+#Hmat <- matrix(0, nrow(data_aug), 3)
+#Hmat[,1] <- 5^2
+#Hmat[,2] <- 5^2
+#Hmat[,3] <- 10^2
+
+
+#2. This code uses:
+#delta_raw <- c(diff(time_sec), 1)
+#delta_raw[1] <- delta_raw[2]
+
+#instead of
+
+#delta_raw <- c(NA, diff(time_sec))
+#delta_raw[1] <- delta_raw[2]
 
 
