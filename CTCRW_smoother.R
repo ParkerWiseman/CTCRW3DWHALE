@@ -29,7 +29,7 @@ CTCRW_smoother1 <- function(filter_out, beta1_vec, beta2_vec, s_horiz, s_vert, d
       # Transition from i to i+1
       ######################################################
       
-      Tmat <- makeT(b1 = beta1_vec[i + 1],b2 = beta2_vec[i + 1],delta = delta[i + 1])
+      Tmat <- makeT(b1 = beta1_vec[i + 1],b2 = beta2_vec[i + 1],delta = delta[i+1])
       
       ######################################################
       # Filtered state at time i
@@ -66,8 +66,10 @@ CTCRW_smoother1 <- function(filter_out, beta1_vec, beta2_vec, s_horiz, s_vert, d
       # prevents singularities and near‑singular matrices from blowing up the smoother
       ######################################################
       
-      P_p_jitter <- P_p_ip1 + diag(1e-8, 6)
-      J <- tryCatch(P_f_i %*% t(Tmat) %*% solve(P_p_jitter), error = function(e) NULL)
+      #P_p_jitter <- P_p_ip1 + diag(1e-8, 6)
+      #J <- tryCatch(P_f_i %*% t(Tmat) %*% solve(P_p_jitter), error = function(e) NULL)
+      
+      J <- tryCatch(P_f_i %*% t(Tmat) %*% solve(P_p_ip1), error = function(e) NULL)
       
       ######################################################
       # Checking for numerical failure:
