@@ -197,9 +197,9 @@ neg_loglikelihood <- function(
   # Negative log-likelihood
   ##########################################################
   
-  if (!is.finite(filt$ll)) {
-    return(1e100)
-  }
+  #if (!is.finite(filt$ll)) {
+  #  return(1e100)
+  #}
   
   -filt$ll
 }
