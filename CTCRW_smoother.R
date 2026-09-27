@@ -56,8 +56,8 @@ CTCRW_smoother1 <- function(filter_out, beta1_vec, beta2_vec, s_horiz, s_vert, d
       # prevents asymmetry drift from floating‑point accumulation
       ######################################################
       
-      P_p_ip1 <- (P_p_ip1 + t(P_p_ip1)) / 2
-      P_f_i <- (P_f_i + t(P_f_i)) / 2
+      #####P_p_ip1 <- (P_p_ip1 + t(P_p_ip1)) / 2
+      #####P_f_i <- (P_f_i + t(P_f_i)) / 2
       
       ######################################################
       # Smoothing gain
@@ -92,7 +92,7 @@ CTCRW_smoother1 <- function(filter_out, beta1_vec, beta2_vec, s_horiz, s_vert, d
       ######################################################
       
       P_s[[i]] <- P_f_i + J %*% (P_s[[i + 1]] - P_p_ip1) %*% t(J)
-      P_s[[i]] <- (P_s[[i]] + t(P_s[[i]])) / 2
+      #####P_s[[i]] <- (P_s[[i]] + t(P_s[[i]])) / 2
     }
   }
   
