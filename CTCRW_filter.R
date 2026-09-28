@@ -90,7 +90,7 @@ CTCRW_filter1 <- function(
     
     K <- P_pred %*% t(Z_i) %*% invF
     
-    #K <- Tmat %*% Pest %*% t(Z_i) %*% invF
+    #Old filter used this Kalman gain: K <- Tmat %*% Pest %*% t(Z_i) %*% invF
     
     aest <- a_pred + K %*% v
     
@@ -101,7 +101,7 @@ CTCRW_filter1 <- function(
     
     Pest <- (Pest + t(Pest)) / 2
     
-    #Pest <- Tmat %*% Pest %*% t(Tmat - K %*% Z_i) + Qmat
+    #Old filter used this Pest update: Pest <- Tmat %*% Pest %*% t(Tmat - K %*% Z_i) + Qmat
     
     a_f[i,] <- as.numeric(aest)
     P_f[[i]] <- Pest
