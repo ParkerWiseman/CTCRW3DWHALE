@@ -30,11 +30,11 @@ CTCRW_filter1 <- function(
   a_p <- matrix(NA_real_, N, 6)
   P_p <- vector("list", N)
   
-  # NEW: store Tmat for smoother
-  T_array <- vector("list", N)
-  
   aest <- as.numeric(a)
   Pest <- P
+  
+  # NEW: store Tmat for smoother instead of recalculating T during the smoothing step
+  T_array <- vector("list", N)
   
   ll <- 0
   
@@ -49,19 +49,9 @@ CTCRW_filter1 <- function(
       T_array[[i]] <- Tmat
       
     } else {
-      Tmat <- makeT(
-        b1 = beta1_vec[i],
-        b2 = beta2_vec[i],
-        delta = delta[i]
-      )
-      
-      Qmat <- makeQ(
-        b1 = beta1_vec[i],
-        b2 = beta2_vec[i],
-        s_horiz = s_horiz,
-        s_vert = s_vert,
-        delta = delta[i]
-      )
+      Tmat <- makeT(b1 = beta1_vec[i], b2 = beta2_vec[i], delta = delta[i])
+      Qmat <- makeQ(b1 = beta1_vec[i], b2 = beta2_vec[i],
+        s_horiz = s_horiz, s_vert = s_vert, delta = delta[i])
       
       a_pred <- as.numeric(Tmat %*% aest)
       P_pred <- Tmat %*% Pest %*% t(Tmat) + Qmat
@@ -69,6 +59,8 @@ CTCRW_filter1 <- function(
       # Store Tmat
       T_array[[i]] <- Tmat
     }
+    
+    #P_pred <- (P_pred + t(P_pred)) / 2
     
     a_p[i,] <- as.numeric(a_pred)
     P_p[[i]] <- P_pred
@@ -89,13 +81,17 @@ CTCRW_filter1 <- function(
     v <- as.numeric(y[i, obs_mask] - Z_i %*% a_pred)
     
     Fmat <- Z_i %*% P_pred %*% t(Z_i) + H_i
+    #Fmat <- (Fmat + t(Fmat)) / 2
     
+    # Using solve() instead of Cholesky
     invF <- tryCatch(solve(Fmat), error = function(e) NULL)
+    
     if (is.null(invF)) {
       return(list(ll = -Inf, a_f = a_f, P_f = P_f, a_p = a_p, P_p = P_p, T_array = T_array))
     }
     
     logdetF <- tryCatch(log(det(Fmat)), error = function(e) -Inf)
+    
     if (!is.finite(logdetF)) {
       return(list(ll = -Inf, a_f = a_f, P_f = P_f, a_p = a_p, P_p = P_p, T_array = T_array))
     }
@@ -105,31 +101,25 @@ CTCRW_filter1 <- function(
     # Standard Kalman gain
     K <- P_pred %*% t(Z_i) %*% invF
     
+    #Old filter used this Kalman gain: K <- Tmat %*% Pest %*% t(Z_i) %*% invF
+    
     aest <- a_pred + K %*% v
     
     I6 <- diag(6)
     
-    # Joseph-form covariance update
-    Pest <- (I6 - K %*% Z_i) %*% P_pred %*% t(I6 - K %*% Z_i) +
-      K %*% H_i %*% t(K)
+    # "Joseph-form" covariance update
+    Pest <- (I6 - K %*% Z_i) %*% P_pred %*% t(I6 - K %*% Z_i) + K %*% H_i %*% t(K)
     
-    Pest <- (Pest + t(Pest)) / 2
+    #Old filter used this Pest update: Pest <- Tmat %*% Pest %*% t(Tmat - K %*% Z_i) + Qmat
+    
+    # Pest <- (Pest + t(Pest)) / 2
     
     a_f[i,] <- as.numeric(aest)
     P_f[[i]] <- Pest
   }
   
-  list(
-    ll = ll,
-    a_f = a_f,
-    P_f = P_f,
-    a_p = a_p,
-    P_p = P_p,
-    T_array = T_array   # smoother will use this
-  )
+  list(ll = ll, a_f = a_f, P_f = P_f, a_p = a_p, P_p = P_p, T_array = T_array)
 }
-
-
 
 
 
