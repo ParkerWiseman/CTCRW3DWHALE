@@ -18,11 +18,7 @@ build_Hmat_LinearError <- function(
   hd <- data_aug$hdop
   N <- nrow(data_aug)
   
-  Hmat <- matrix(
-    NA_real_,
-    N,
-    3
-  )
+  Hmat <- matrix(NA_real_, N, 3)
   
   for (i in seq_len(N)) {
     
@@ -32,12 +28,8 @@ build_Hmat_LinearError <- function(
       h_i <- 10
     }
     
-    var_xy_i <-
-      var0_xy +
-      var1_xy * h_i
-    
-    var_xy_i <-
-      max(var_xy_i, 1e-3)
+    var_xy_i <- var0_xy + var1_xy * h_i
+    var_xy_i <- max(var_xy_i, 1e-3)
     
     Hmat[i,1] <- var_xy_i
     Hmat[i,2] <- var_xy_i
@@ -52,11 +44,8 @@ build_Hmat_LinearError <- function(
 # NEGATIVE LOG-LIKELIHOOD
 ############################################################
 
-neg_loglikelihood <- function(
-    params,
-    data_aug,
-    error_model = c("linearerror")
-) {
+neg_loglikelihood <- function(params, data_aug,
+                              error_model = c("linearerror")) {
   
   error_model <- match.arg(error_model)
   
@@ -76,9 +65,7 @@ neg_loglikelihood <- function(
   # Observations
   ##########################################################
   
-  y <- as.matrix(
-    data_aug[, c("x", "y", "depth")]
-  )
+  y <- as.matrix(data_aug[, c("x", "y", "depth")])
   
   N <- nrow(data_aug)
   
@@ -87,14 +74,9 @@ neg_loglikelihood <- function(
   # Time in seconds
   ##########################################################
   
-  time_sec <-
-    as.numeric(
-      difftime(
-        data_aug$time,
-        min(data_aug$time),
-        units = "secs"
-      )
-    )
+  time_sec <- as.numeric(difftime(data_aug$time,
+                                  min(data_aug$time),
+                                  units = "secs"))
   
   
   ##########################################################
@@ -127,7 +109,6 @@ neg_loglikelihood <- function(
   ##########################################################
   
   beta1_vec <- rep(beta1,N)
-  
   beta2_vec <- rep(beta2,N)
   
   ##########################################################
@@ -161,14 +142,9 @@ neg_loglikelihood <- function(
   
   
   a <- c(
-    get_first_non_missing(y[,1]),
-    0,
-    
-    get_first_non_missing(y[,2]),
-    0,
-    
-    get_first_non_missing(y[,3]),
-    0
+    get_first_non_missing(y[,1]), 0,
+    get_first_non_missing(y[,2]), 0,
+    get_first_non_missing(y[,3]), 0
   )
   
   ##########################################################
