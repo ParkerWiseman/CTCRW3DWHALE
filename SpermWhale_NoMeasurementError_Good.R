@@ -549,11 +549,7 @@ print(p_y)
 # OPTIONAL: SAVE SMOOTHED TRACK
 ############################################################
 
-write.csv(
-  smooth_track,
-  "sperm_whale_CTCRW_smoothed_track.csv",
-  row.names = FALSE
-)
+write.csv(smooth_track, "sperm_whale_CTCRW_smoothed_track.csv", row.names = FALSE)
 
 ############################################################
 # OPTIONAL SUMMARY
@@ -563,22 +559,11 @@ cat("\n")
 cat("SMOOTHED TRACK CREATED\n")
 cat("======================\n")
 
-cat(
-  "Number of observations: ",
-  N,
-  "\n"
-)
+cat("Number of observations: ", N, "\n")
 
-cat(
-  "Number of smoothed states: ",
-  nrow(smooth_track),
-  "\n"
-)
+cat("Number of smoothed states: ", nrow(smooth_track), "\n")
 
-cat(
-  "Smoothed track saved to:\n",
-  "sperm_whale_CTCRW_smoothed_track.csv\n"
-)
+cat("Smoothed track saved to:\n", "sperm_whale_CTCRW_smoothed_track.csv\n")
 
 cat("\n")
 cat("DONE.\n")
