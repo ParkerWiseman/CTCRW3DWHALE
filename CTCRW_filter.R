@@ -66,7 +66,7 @@ CTCRW_filter1 <- function(
     v <- as.numeric(y[i, obs_mask] - Z_i %*% a_pred)
     
     Fmat <- Z_i %*% P_pred %*% t(Z_i) + H_i
-    Fmat <- (Fmat + t(Fmat)) / 2
+    #Fmat <- (Fmat + t(Fmat)) / 2
     
     ########################################################
     # Using solve() instead of Cholesky
@@ -99,7 +99,7 @@ CTCRW_filter1 <- function(
     Pest <- (I6 - K %*% Z_i) %*% P_pred %*% t(I6 - K %*% Z_i) +
       K %*% H_i %*% t(K)
     
-    Pest <- (Pest + t(Pest)) / 2
+    #Pest <- (Pest + t(Pest)) / 2
     
     #Old filter used this Pest update: Pest <- Tmat %*% Pest %*% t(Tmat - K %*% Z_i) + Qmat
     
