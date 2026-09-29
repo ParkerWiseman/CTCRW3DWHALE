@@ -1,0 +1,11 @@
+"parameter","true_value"
+"beta1",5e-04
+"beta2",0.004
+"sigma1",0.04
+"sigma2",0.08
+"tau1_seconds",2000
+"tau2_seconds",250
+"tau1_hours",0.555555555555556
+"tau2_hours",0.0694444444444444
+"RMS_horizontal",1.26491106406735
+"RMS_vertical",0.894427190999916
