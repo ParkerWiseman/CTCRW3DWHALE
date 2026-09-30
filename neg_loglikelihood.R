@@ -157,7 +157,7 @@ neg_loglikelihood <- function(params, data_aug,
   # Kalman filter
   ##########################################################
   
-  filt <- CTCRW_filter1(
+  filt <- CTCRW_filter(
     y = y,
     Hmat = Hmat,
     beta1_vec = beta1_vec,
