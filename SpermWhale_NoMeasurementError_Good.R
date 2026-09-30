@@ -251,7 +251,7 @@ neg_loglikelihood_noerror <- function(
   # KALMAN FILTER
   ##########################################################
   
-  filt <- CTCRW_filter1(
+  filt <- CTCRW_filter(
     y = y,
     Hmat = Hmat,
     beta1_vec = beta1_vec,
@@ -390,7 +390,7 @@ P0 <- diag(c(100, 10, 100, 10, 100, 10))
 cat("\n")
 cat("RUNNING KALMAN FILTER...\n")
 
-filt <- CTCRW_filter1(
+filt <- CTCRW_filter(
   y = y,
   Hmat = Hmat_zero,
   beta1_vec = rep(beta1_hat,N),
@@ -408,7 +408,7 @@ filt <- CTCRW_filter1(
 
 cat("RUNNING KALMAN SMOOTHER...\n")
 
-smooth <- CTCRW_smoother1(
+smooth <- CTCRW_smoother(
   filter_out = filt,
   beta1_vec = rep(beta1_hat,N),
   beta2_vec = rep(beta2_hat,N),

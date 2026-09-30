@@ -2,10 +2,10 @@
 
 
 ############################################################
-# CTCRW_smoother.R
+# CTCRW_smoother.R — RTS smoother (single function)
 ############################################################
 
-CTCRW_smoother1 <- function(
+CTCRW_smoother <- function(
     filter_out,
     beta1_vec,
     beta2_vec,
@@ -16,17 +16,18 @@ CTCRW_smoother1 <- function(
   
   N <- nrow(filter_out$a_f)
   
+  # Initialize smoothed means and covariances
   a_s <- filter_out$a_f
   P_s <- filter_out$P_f
   
-  # Use stored T matrices
+  # Using stored T matrices from the filtering step
   T_array <- filter_out$T_array
   
   if (N >= 2) {
     
     for (i in (N - 1):1) {
       
-      # Use stored Tmat
+      # Use stored T matrix
       Tmat <- T_array[[i + 1]]
       
       a_f_i   <- filter_out$a_f[i, ]
@@ -54,25 +55,6 @@ CTCRW_smoother1 <- function(
   }
   
   list(a_s = a_s, P_s = P_s)
-}
-
-CTCRW_smoother <- function(
-    filter_out,
-    beta1_vec,
-    beta2_vec,
-    s1,
-    s2,
-    s3,
-    delta
-) {
-  CTCRW_smoother1(
-    filter_out = filter_out,
-    beta1_vec = beta1_vec,
-    beta2_vec = beta2_vec,
-    s_horiz = s1,
-    s_vert = s3,
-    delta = delta
-  )
 }
 
 

@@ -5,7 +5,7 @@
 # CTCRW_filter.R
 ############################################################
 
-CTCRW_filter1 <- function(
+CTCRW_filter <- function(
     y,
     Hmat,
     beta1_vec,
