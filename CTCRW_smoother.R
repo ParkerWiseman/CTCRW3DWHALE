@@ -7,10 +7,10 @@
 
 CTCRW_smoother <- function(
     filter_out,
-    beta1_vec,
-    beta2_vec,
-    s_horiz,
-    s_vert,
+    beta_horiz_vec,
+    beta_vert_vec,
+    var_horiz_vec,
+    var_vert_vec,
     delta
 ) {
   

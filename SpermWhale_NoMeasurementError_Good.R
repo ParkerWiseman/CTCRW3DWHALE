@@ -7,10 +7,10 @@
 # 3D CTCRW sperm whale model
 #
 # Estimates:
-#   beta1
-#   beta2
-#   sigma1
-#   sigma2
+#   beta_horiz
+#   beta_vert
+#   sigma_horiz
+#   sigma_vert
 #
 # Then performs:
 #   1. Kalman filtering
@@ -116,20 +116,20 @@ tau_vert_hours <- 3
 tau_horiz_sec <- tau_horiz_hours * 3600
 tau_vert_sec <- tau_vert_hours * 3600
 
-beta1_start <- 1 / tau_horiz_sec
-beta2_start <- 1 / tau_vert_sec
+beta_horiz_start <- 1 / tau_horiz_sec
+beta_vert_start <- 1 / tau_vert_sec
 
 v_rms_horiz <- 1.0
 v_rms_vert <- 0.5
 
-sigma1_start <- v_rms_horiz * sqrt(2 * beta1_start)
-sigma2_start <- v_rms_vert * sqrt(2 * beta2_start)
+sigma_horiz_start <- v_rms_horiz * sqrt(2 * beta_horiz_start)
+sigma_vert_start <- v_rms_vert * sqrt(2 * beta_vert_start)
 
 params_start <- c(
-  beta1 = log(beta1_start),
-  beta2 = log(beta2_start),
-  sigma1 = log(sigma1_start),
-  sigma2 = log(sigma2_start)
+  beta_horiz = log(beta_horiz_start),
+  beta_vert = log(beta_vert_start),
+  sigma_horiz = log(sigma_horiz_start),
+  sigma_vert = log(sigma_vert_start)
 )
 
 cat("\n")
@@ -152,10 +152,10 @@ neg_loglikelihood_noerror <- function(
   # Transform parameters
   ##########################################################
   
-  beta1 <- exp(params["beta1"])
-  beta2 <- exp(params["beta2"])
-  sigma1 <- exp(params["sigma1"])
-  sigma2 <- exp(params["sigma2"])
+  beta_horiz <- exp(params["beta_horiz"])
+  beta_vert <- exp(params["beta_vert"])
+  sigma_horiz <- exp(params["sigma_horiz"])
+  sigma_vert <- exp(params["sigma_vert"])
   
   ##########################################################
   # Observations
@@ -198,15 +198,15 @@ neg_loglikelihood_noerror <- function(
   # Process noise
   ##########################################################
   
-  s_horiz <- sigma1^2
-  s_vert <- sigma2^2
+  var_horiz_vec <- rep(sigma_horiz^2,N)
+  var_vert_vec <- rep(sigma_vert^2,N)
   
   ##########################################################
   # Parameter vectors
   ##########################################################
   
-  beta1_vec <-rep(beta1,N)
-  beta2_vec <- rep(beta2,N)
+  beta_horiz_vec <-rep(beta_horiz,N)
+  beta_vert_vec <- rep(beta_vert,N)
   
   ##########################################################
   # SMALL MEASUREMENT ERROR
@@ -254,10 +254,10 @@ neg_loglikelihood_noerror <- function(
   filt <- CTCRW_filter(
     y = y,
     Hmat = Hmat,
-    beta1_vec = beta1_vec,
-    beta2_vec = beta2_vec,
-    s_horiz = s_horiz,
-    s_vert = s_vert,
+    beta_horiz_vec = beta_horiz_vec,
+    beta_vert_vec = beta_vert_vec,
+    var_horiz_vec = var_horiz_vec,
+    var_vert_vec = var_vert_vec,
     delta = delta,
     a = a,
     P = P
@@ -267,9 +267,9 @@ neg_loglikelihood_noerror <- function(
   # Return negative log-likelihood
   ##########################################################
   
-  if (!is.finite(filt$ll)) {
-    return(1e100)
-  }
+  #if (!is.finite(filt$ll)) {
+  #  return(1e100)
+  #}
   
   -filt$ll
 }
@@ -311,20 +311,20 @@ cat("====================\n")
 
 print(p_hat)
 
-beta1_hat <- p_hat["beta1"]
-beta2_hat <- p_hat["beta2"]
-sigma1_hat <- p_hat["sigma1"]
-sigma2_hat <- p_hat["sigma2"]
+beta_horiz_hat <- p_hat["beta_horiz"]
+beta_vert_hat <- p_hat["beta_vert"]
+sigma_horiz_hat <- p_hat["sigma_horiz"]
+sigma_vert_hat <- p_hat["sigma_vert"]
 
 ############################################################
 # INTERPRETABLE PARAMETERS
 ############################################################
 
-tau1_hat <- 1 / beta1_hat
-tau2_hat <- 1 / beta2_hat
+tau1_hat <- 1 / beta_horiz_hat
+tau2_hat <- 1 / beta_vert_hat
 
-nu1_hat <- sigma1_hat / sqrt(2 * beta1_hat)
-nu2_hat <- sigma2_hat / sqrt(2 * beta2_hat)
+nu1_hat <- sigma_horiz_hat / sqrt(2 * beta_horiz_hat)
+nu2_hat <- sigma_vert_hat / sqrt(2 * beta_vert_hat)
 
 cat("\n")
 cat("INTERPRETABLE PARAMETERS\n")
@@ -393,10 +393,10 @@ cat("RUNNING KALMAN FILTER...\n")
 filt <- CTCRW_filter(
   y = y,
   Hmat = Hmat_zero,
-  beta1_vec = rep(beta1_hat,N),
-  beta2_vec = rep(beta2_hat,N),
-  s_horiz = sigma1_hat^2,
-  s_vert = sigma2_hat^2,
+  beta_horiz_vec = rep(beta_horiz_hat,N),
+  beta_vert_vec = rep(beta_vert_hat,N),
+  var_horiz_vec = rep(sigma_horiz_hat^2,N),
+  var_vert_vec = rep(sigma_vert_hat^2,N),
   delta = delta,
   a = a0,
   P = P0
@@ -410,10 +410,10 @@ cat("RUNNING KALMAN SMOOTHER...\n")
 
 smooth <- CTCRW_smoother(
   filter_out = filt,
-  beta1_vec = rep(beta1_hat,N),
-  beta2_vec = rep(beta2_hat,N),
-  s_horiz = sigma1_hat^2,
-  s_vert = sigma2_hat^2,
+  beta_horiz_vec = rep(beta_horiz_hat,N),
+  beta_vert_vec = rep(beta_vert_hat,N),
+  var_horiz_vec = rep(sigma_horiz_hat^2,N),
+  var_vert_vec = rep(sigma_vert_hat^2,N),
   delta = delta
 )
 

@@ -9,11 +9,11 @@
 # State:
 #   [x, vx, y, vy, depth, vdepth]
 #
-# beta1 = horizontal velocity mean-reversion parameter
-# beta2 = vertical velocity mean-reversion parameter
+# beta_horiz = horizontal velocity mean-reversion parameter
+# beta_vert = vertical velocity mean-reversion parameter
 #
 # sigma/process noise parameters are supplied as variances
-# through s_horiz and s_vert.
+# through var_horiz_vec and var_vert_vec.
 ############################################################
 
 
@@ -53,8 +53,8 @@ makeT <- function(b1, b2, delta) {
 makeQ <- function(
     b1,
     b2,
-    s_horiz,
-    s_vert,
+    var_horiz,
+    var_vert,
     delta
 ) {
   
@@ -85,22 +85,22 @@ makeQ <- function(
   Q <- matrix(0, 6, 6)
   
   # X
-  Q[1,1] <- s_horiz * q11_1
-  Q[2,2] <- s_horiz * q33_1
-  Q[1,2] <- s_horiz * q13_1
-  Q[2,1] <- s_horiz * q13_1
+  Q[1,1] <- var_horiz * q11_1
+  Q[2,2] <- var_horiz * q33_1
+  Q[1,2] <- var_horiz * q13_1
+  Q[2,1] <- var_horiz * q13_1
   
   # Y
-  Q[3,3] <- s_horiz * q11_1
-  Q[4,4] <- s_horiz * q33_1
-  Q[3,4] <- s_horiz * q13_1
-  Q[4,3] <- s_horiz * q13_1
+  Q[3,3] <- var_horiz * q11_1
+  Q[4,4] <- var_horiz * q33_1
+  Q[3,4] <- var_horiz * q13_1
+  Q[4,3] <- var_horiz * q13_1
   
   # Depth
-  Q[5,5] <- s_vert * q11_2
-  Q[6,6] <- s_vert * q33_2
-  Q[5,6] <- s_vert * q13_2
-  Q[6,5] <- s_vert * q13_2
+  Q[5,5] <- var_vert * q11_2
+  Q[6,6] <- var_vert * q33_2
+  Q[5,6] <- var_vert * q13_2
+  Q[6,5] <- var_vert * q13_2
   
   Q
 }

@@ -54,11 +54,11 @@ neg_loglikelihood <- function(params, data_aug,
   # Transform parameters to positive values
   ##########################################################
   
-  beta1 <- exp(params["beta1"])
-  beta2 <- exp(params["beta2"])
+  beta_horiz <- exp(params["beta_horiz"])
+  beta_vert <- exp(params["beta_vert"])
   
-  sigma1 <- exp(params["sigma1"])
-  sigma2 <- exp(params["sigma2"])
+  sigma_horiz <- exp(params["sigma_horiz"])
+  sigma_vert <- exp(params["sigma_vert"])
   
   
   ##########################################################
@@ -101,15 +101,15 @@ neg_loglikelihood <- function(params, data_aug,
   # Process-noise variances
   ##########################################################
   
-  s_horiz <- sigma1^2
-  s_vert <- sigma2^2
+  var_horiz_vec <- rep(sigma_horiz^2,N)
+  var_vert_vec <- rep(sigma_vert^2,N)
   
   ##########################################################
   # Parameter vectors
   ##########################################################
   
-  beta1_vec <- rep(beta1,N)
-  beta2_vec <- rep(beta2,N)
+  beta_horiz_vec <- rep(beta_horiz,N)
+  beta_vert_vec <- rep(beta_vert,N)
   
   ##########################################################
   # Measurement error model
@@ -160,10 +160,10 @@ neg_loglikelihood <- function(params, data_aug,
   filt <- CTCRW_filter(
     y = y,
     Hmat = Hmat,
-    beta1_vec = beta1_vec,
-    beta2_vec = beta2_vec,
-    s_horiz = s_horiz,
-    s_vert = s_vert,
+    beta_horiz_vec = beta_horiz_vec,
+    beta_vert_vec = beta_vert_vec,
+    var_horiz_vec = var_horiz_vec,
+    var_vert_vec = var_vert_vec,
     delta = delta,
     a = a,
     P = P

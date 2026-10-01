@@ -8,10 +8,10 @@
 CTCRW_filter <- function(
     y,
     Hmat,
-    beta1_vec,
-    beta2_vec,
-    s_horiz,
-    s_vert,
+    beta_horiz_vec,
+    beta_vert_vec,
+    var_horiz_vec,
+    var_vert_vec,
     delta,
     a,
     P
@@ -49,9 +49,9 @@ CTCRW_filter <- function(
       T_array[[i]] <- Tmat
       
     } else {
-      Tmat <- makeT(b1 = beta1_vec[i], b2 = beta2_vec[i], delta = delta[i])
-      Qmat <- makeQ(b1 = beta1_vec[i], b2 = beta2_vec[i],
-        s_horiz = s_horiz, s_vert = s_vert, delta = delta[i])
+      Tmat <- makeT(b1 = beta_horiz_vec[i], b2 = beta_vert_vec[i], delta = delta[i])
+      Qmat <- makeQ(b1 = beta_horiz_vec[i], b2 = beta_vert_vec[i],
+                    var_horiz = var_horiz_vec[i], var_vert = var_vert_vec[i], delta = delta[i])
       
       a_pred <- as.numeric(Tmat %*% aest)
       P_pred <- Tmat %*% Pest %*% t(Tmat) + Qmat
@@ -120,6 +120,9 @@ CTCRW_filter <- function(
   
   list(ll = ll, a_f = a_f, P_f = P_f, a_p = a_p, P_p = P_p, T_array = T_array)
 }
+
+
+
 
 
 
