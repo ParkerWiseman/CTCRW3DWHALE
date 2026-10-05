@@ -21,27 +21,27 @@
 # TRANSITION MATRIX
 ############################################################
 
-makeT <- function(b1, b2, delta) {
+makeT <- function(beta_horiz, beta_vert, delta) {
   
-  ebd1 <- exp(-b1 * delta)
-  ebd2 <- exp(-b2 * delta)
+  ebd1 <- exp(-beta_horiz * delta)
+  ebd2 <- exp(-beta_vert * delta)
   
   T <- matrix(0, 6, 6)
   
   # X / horizontal velocity
   T[1,1] <- 1
   T[2,2] <- ebd1
-  T[1,2] <- (1-ebd1)/b1
+  T[1,2] <- (1-ebd1)/beta_horiz
   
   # Y / horizontal velocity
   T[3,3] <- 1
   T[4,4] <- ebd1
-  T[3,4] <- (1-ebd1)/b1
+  T[3,4] <- (1-ebd1)/beta_horiz
   
   # Depth / vertical velocity
   T[5,5] <- 1
   T[6,6] <- ebd2
-  T[5,6] <- (1-ebd2)/b2
+  T[5,6] <- (1-ebd2)/beta_vert
   
   T
 }
@@ -51,8 +51,8 @@ makeT <- function(b1, b2, delta) {
 ############################################################
 
 makeQ <- function(
-    b1,
-    b2,
+    beta_horiz,
+    beta_vert,
     var_horiz,
     var_vert,
     delta
@@ -62,21 +62,21 @@ makeQ <- function(
   # Horizontal component
   ##########################################################
   
-  ebd1  <- exp(-b1*delta)
-  e2bd1 <- exp(-2*b1*delta)
-  q11_1 <- (delta - 2*(1-ebd1)/b1 + (1-e2bd1)/(2*b1)) / b1^2
-  q13_1 <- ((1-ebd1) - (1-e2bd1)/2) / b1^2
-  q33_1 <- (1-e2bd1)/(2*b1)
+  ebd1  <- exp(-beta_horiz*delta)
+  e2bd1 <- exp(-2*beta_horiz*delta)
+  q11_1 <- (delta - 2*(1-ebd1)/beta_horiz + (1-e2bd1)/(2*beta_horiz)) / beta_horiz^2
+  q13_1 <- ((1-ebd1) - (1-e2bd1)/2) / beta_horiz^2
+  q33_1 <- (1-e2bd1)/(2*beta_horiz)
   
   ##########################################################
   # Vertical component
   ##########################################################
   
-  ebd2  <- exp(-b2*delta)
-  e2bd2 <- exp(-2*b2*delta)
-  q11_2 <- (delta - 2*(1-ebd2)/b2 + (1-e2bd2)/(2*b2)) / b2^2
-  q13_2 <- ((1-ebd2) - (1-e2bd2)/2) / b2^2
-  q33_2 <- (1-e2bd2)/(2*b2)
+  ebd2  <- exp(-beta_vert*delta)
+  e2bd2 <- exp(-2*beta_vert*delta)
+  q11_2 <- (delta - 2*(1-ebd2)/beta_vert + (1-e2bd2)/(2*beta_vert)) / beta_vert^2
+  q13_2 <- ((1-ebd2) - (1-e2bd2)/2) / beta_vert^2
+  q33_2 <- (1-e2bd2)/(2*beta_vert)
   
   ##########################################################
   # Assemble 6 x 6 Q matrix
