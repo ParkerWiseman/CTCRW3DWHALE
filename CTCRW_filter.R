@@ -2,7 +2,7 @@
 
 
 ############################################################
-# CTCRW_filter.R
+# CTCRW_filter.R — 3D CTCRW filter matching supervisor indexing
 ############################################################
 
 CTCRW_filter <- function(
@@ -19,110 +19,99 @@ CTCRW_filter <- function(
   
   N <- nrow(y)
   
-  Z_full <- matrix(0, 3, 6)
-  Z_full[1,1] <- 1
-  Z_full[2,3] <- 1
-  Z_full[3,5] <- 1
+  # Observation matrix (3x6): x, y, depth
+  Z <- matrix(0, 3, 6)
+  Z[1,1] <- 1   # x
+  Z[2,3] <- 1   # y
+  Z[3,5] <- 1   # depth
   
-  a_f <- matrix(NA_real_, N, 6)
-  P_f <- vector("list", N)
+  # Storage
+  aest <- matrix(0, N, 6)              # filtered means
+  Pest <- array(0, c(6, 6, N))         # filtered covariances
   
-  a_p <- matrix(NA_real_, N, 6)
-  P_p <- vector("list", N)
+  v <- matrix(0, N, 3)                 # innovations (full 3D)
+  F <- array(0, c(3, 3, N))            # innovation covariances
+  K <- array(0, c(6, 3, N))            # Kalman gains
+  L <- array(0, c(6, 6, N))            # L matrices
+  T_array <- array(0, c(6, 6, N))      # transition matrices
   
-  aest <- as.numeric(a)
-  Pest <- P
-  
-  # NEW: store Tmat for smoother instead of recalculating T during the smoothing step
-  T_array <- vector("list", N)
+  # Initial state
+  aest[1,] <- a
+  Pest[,,1] <- P
   
   ll <- 0
   
-  for (i in seq_len(N)) {
+  # Loop over time: update at time i, predict to time i+1
+  for (i in 1:(N-1)) {
     
-    if (i == 1) {
-      a_pred <- aest
-      P_pred <- Pest
-      
-      # First Tmat is identity (no movement at first observation)
-      Tmat <- diag(6)
-      T_array[[i]] <- Tmat
-      
-    } else {
-      Tmat <- makeT(b1 = beta_horiz_vec[i], b2 = beta_vert_vec[i], delta = delta[i])
-      Qmat <- makeQ(b1 = beta_horiz_vec[i], b2 = beta_vert_vec[i],
-                    var_horiz = var_horiz_vec[i], var_vert = var_vert_vec[i], delta = delta[i])
-      
-      a_pred <- as.numeric(Tmat %*% aest)
-      P_pred <- Tmat %*% Pest %*% t(Tmat) + Qmat
-      
-      # Store Tmat
-      T_array[[i]] <- Tmat
-    }
+    # Transition matrix for step i -> i+1
+    Tmat <- makeT(beta_horiz = beta_horiz_vec[i], beta_vert = beta_vert_vec[i], delta = delta[i+1])
     
-    #P_pred <- (P_pred + t(P_pred)) / 2
+    T_array[,,i] <- Tmat
     
-    a_p[i,] <- as.numeric(a_pred)
-    P_p[[i]] <- P_pred
+    # Process noise for step i -> i+1
+    Qmat <- makeQ(beta_horiz = beta_horiz_vec[i], beta_vert = beta_vert_vec[i],
+      var_horiz = var_horiz_vec[i], var_vert = var_vert_vec[i], delta = delta[i+1]
+    )
     
+    # Missing observation at time i?
     obs_mask <- !is.na(y[i,])
     
-    if (!any(obs_mask)) {
-      aest <- as.numeric(a_pred)
-      Pest <- P_pred
-      a_f[i,] <- aest
-      P_f[[i]] <- Pest
-      next
-    }
+    #if (!any(obs_mask)) {
+    #  # No observation: pure prediction
+    #  aest[i+1,]   <- Tmat %*% aest[i,]
+    #  Pest[,,i+1]  <- Tmat %*% Pest[,,i] %*% t(Tmat) + Qmat
+    #  L[,,i]       <- Tmat
+    #  next
+    #}
     
-    Z_i <- Z_full[obs_mask,,drop = FALSE]
+    # Subset Z and H to observed components at time i
+    Z_i <- Z[obs_mask,, drop = FALSE]
     H_i <- diag(Hmat[i, obs_mask], sum(obs_mask))
     
-    v <- as.numeric(y[i, obs_mask] - Z_i %*% a_pred)
+    # Innovation only for observed components (update at time i)
+    v_i <- as.numeric(y[i, obs_mask] - Z_i %*% aest[i,])
     
-    Fmat <- Z_i %*% P_pred %*% t(Z_i) + H_i
-    #Fmat <- (Fmat + t(Fmat)) / 2
+    # Innovation covariance
+    F_i <- Z_i %*% Pest[,,i] %*% t(Z_i) + H_i
+    invF_i <- solve(F_i)
     
-    # Using solve() instead of Cholesky
-    invF <- tryCatch(solve(Fmat), error = function(e) NULL)
+    # Kalman gain for observed components
+    K_i <- Tmat %*% Pest[,,i] %*% t(Z_i) %*% invF_i  # 6 x k
     
-    if (is.null(invF)) {
-      return(list(ll = -Inf, a_f = a_f, P_f = P_f, a_p = a_p, P_p = P_p, T_array = T_array))
-    }
+    # Embed v_i and F_i back into full 3D space at time i
+    v[i, obs_mask] <- v_i
+    F[obs_mask, obs_mask, i] <- F_i
     
-    logdetF <- tryCatch(log(det(Fmat)), error = function(e) -Inf)
+    # Full 6x3 K: zeros then fill observed columns
+    K_full <- matrix(0, 6, 3)
+    K_full[, obs_mask] <- K_i
+    K[,,i] <- K_full
     
-    if (!is.finite(logdetF)) {
-      return(list(ll = -Inf, a_f = a_f, P_f = P_f, a_p = a_p, P_p = P_p, T_array = T_array))
-    }
+    # L matrix for smoother
+    L[,,i] <- Tmat - K_full %*% Z
     
-    ll <- ll - 0.5 * (logdetF + t(v) %*% invF %*% v)
+    # Filtered mean at time i+1
+    aest[i+1,] <- Tmat %*% aest[i,] + K_full %*% v[i,]
     
-    # Standard Kalman gain
-    K <- P_pred %*% t(Z_i) %*% invF
+    # Filtered covariance at time i+1 (DK / crawl form)
+    Pest[,,i+1] <- Tmat %*% Pest[,,i] %*% t(L[,,i]) + Qmat
     
-    #Old filter used this Kalman gain: K <- Tmat %*% Pest %*% t(Z_i) %*% invF
-    
-    aest <- a_pred + K %*% v
-    
-    I6 <- diag(6)
-    
-    # "Joseph-form" covariance update
-    Pest <- (I6 - K %*% Z_i) %*% P_pred %*% t(I6 - K %*% Z_i) + K %*% H_i %*% t(K)
-    
-    #Old filter used this Pest update: Pest <- Tmat %*% Pest %*% t(Tmat - K %*% Z_i) + Qmat
-    
-    # Pest <- (Pest + t(Pest)) / 2
-    
-    a_f[i,] <- as.numeric(aest)
-    P_f[[i]] <- Pest
+    # Log-likelihood contribution (only observed components)
+    ll <- ll - 0.5 * (log(det(F_i)) + t(v_i) %*% invF_i %*% v_i)
   }
   
-  list(ll = ll, a_f = a_f, P_f = P_f, a_p = a_p, P_p = P_p, T_array = T_array)
+  list(
+    ll      = ll,
+    aest    = aest,
+    Pest    = Pest,
+    v       = v,
+    F       = F,
+    K       = K,
+    L       = L,
+    T_array = T_array
+  )
 }
-
-
-
 
 
 
