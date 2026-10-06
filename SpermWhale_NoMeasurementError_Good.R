@@ -28,6 +28,7 @@ source("CTCRW_filter.R")
 source("CTCRW_smoother.R")
 source("neg_loglikelihood.R")
 source("simulate_CTCRW_3D.R")
+source("utility.R")
 
 ############################################################
 # LOAD DATA
@@ -114,75 +115,7 @@ params_start <- c(
 cat("\nINITIAL PARAMETERS\n==================\n")
 print(params_start)
 
-############################################################
-# NEGATIVE LOG-LIKELIHOOD (small measurement error)
-############################################################
 
-neg_loglikelihood_noerror <- function(
-    params,
-    data_aug
-) {
-  
-  beta_horiz  <- exp(params["beta_horiz"])
-  beta_vert   <- exp(params["beta_vert"])
-  sigma_horiz <- exp(params["sigma_horiz"])
-  sigma_vert  <- exp(params["sigma_vert"])
-  
-  y <- as.matrix(data_aug[, c("x", "y", "depth")])
-  N <- nrow(data_aug)
-  
-  time_sec <-
-    as.numeric(
-      difftime(
-        data_aug$time,
-        min(data_aug$time),
-        units = "secs"
-      )
-    )
-  
-  delta <- c(0, diff(time_sec))
-  delta[!is.finite(delta)] <- 0
-  delta <- pmax(delta, 0)
-  
-  var_horiz_vec <- rep(sigma_horiz^2, N)
-  var_vert_vec  <- rep(sigma_vert^2,  N)
-  
-  beta_horiz_vec <- rep(beta_horiz, N)
-  beta_vert_vec  <- rep(beta_vert,  N)
-  
-  Hmat <- matrix(0, N, 3)
-  Hmat[,1] <- 5^2   # x
-  Hmat[,2] <- 5^2   # y
-  Hmat[,3] <- 10^2  # depth
-  
-  get_first_non_missing <- function(x) {
-    idx <- which(!is.na(x))[1]
-    if (length(idx) == 0) return(0)
-    x[idx]
-  }
-  
-  a <- c(
-    get_first_non_missing(y[,1]), 0,
-    get_first_non_missing(y[,2]), 0,
-    get_first_non_missing(y[,3]), 0
-  )
-  
-  P <- diag(6) * 1e6
-  
-  filt <- CTCRW_filter(
-    y              = y,
-    Hmat           = Hmat,
-    beta_horiz_vec = beta_horiz_vec,
-    beta_vert_vec  = beta_vert_vec,
-    var_horiz_vec  = var_horiz_vec,
-    var_vert_vec   = var_vert_vec,
-    delta          = delta,
-    a              = a,
-    P              = P
-  )
-  
-  -filt$ll
-}
 
 ############################################################
 # FIT MODEL
@@ -221,8 +154,8 @@ sigma_vert_hat  <- p_hat["sigma_vert"]
 tau1_hat <- 1 / beta_horiz_hat
 tau2_hat <- 1 / beta_vert_hat
 
-nu1_hat <- sigma_horiz_hat / sqrt(2 * beta_horiz_hat)
-nu2_hat <- sigma_vert_hat  / sqrt(2 * beta_vert_hat)
+nu1_hat <- sigma_horiz_hat * sqrt(pi) / (2 * sqrt(beta_horiz_hat))
+nu2_hat <- sigma_vert_hat * sqrt(pi)  / (2 * sqrt(beta_vert_hat))
 
 cat("\nINTERPRETABLE PARAMETERS\n========================\n")
 cat("Horizontal autocorrelation time tau1 (seconds): ", tau1_hat, "\n")
@@ -245,11 +178,6 @@ Hmat_zero[,1] <- 5^2
 Hmat_zero[,2] <- 5^2
 Hmat_zero[,3] <- 10^2
 
-get_first_non_missing <- function(x) {
-  idx <- which(!is.na(x))[1]
-  if (length(idx) == 0) return(0)
-  x[idx]
-}
 
 a0 <- c(
   get_first_non_missing(y[,1]), 0,
@@ -257,7 +185,7 @@ a0 <- c(
   get_first_non_missing(y[,3]), 0
 )
 
-P0 <- diag(c(100, 10, 100, 10, 100, 10))
+P <- diag(6) * 1e6
 
 cat("\nRUNNING KALMAN FILTER...\n")
 
@@ -270,7 +198,7 @@ filt <- CTCRW_filter(
   var_vert_vec   = rep(sigma_vert_hat^2,  N),
   delta          = delta,
   a              = a0,
-  P              = P0
+  P              = P
 )
 
 cat("RUNNING KALMAN SMOOTHER...\n")
@@ -305,6 +233,32 @@ plot_data <- aug %>%
 
 n_plot <- min(1000, nrow(plot_data))
 subset_plot <- plot_data[1:n_plot, ]
+
+
+############################################################
+# PLOT 0: DEPTH VS TIME (FIRST 200 OBSERVATIONS)
+############################################################
+
+n_200 <- min(200, nrow(plot_data))
+subset_200 <- plot_data[1:n_200, ]
+
+p_depth_200 <- ggplot() +
+  geom_point(data = subset_200,
+             aes(x = time, y = depth),
+             color = "blue", alpha = 0.5) +
+  geom_line(data = subset_200,
+            aes(x = time, y = smooth_depth),
+            color = "red", linewidth = 1) +
+  labs(
+    title    = paste0("Depth vs Time — CTCRW Smoothed Track (First ", n_200, " rows)"),
+    subtitle = "Blue = observations; red = smoothed latent trajectory",
+    x        = "Time",
+    y        = "Depth"
+  ) +
+  theme_minimal()
+
+print(p_depth_200)
+
 
 ############################################################
 # PLOT 1: DEPTH VS TIME
