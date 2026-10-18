@@ -51,7 +51,7 @@ CTCRW_filter <- function(
     
     # Process noise for step i -> i+1
     Qmat <- makeQ(beta_horiz = beta_horiz_vec[i], beta_vert = beta_vert_vec[i],
-      var_horiz = var_horiz_vec[i], var_vert = var_vert_vec[i], delta = delta[i+1]
+                  var_horiz = var_horiz_vec[i], var_vert = var_vert_vec[i], delta = delta[i+1]
     )
     
     # Missing observation at time i?
@@ -112,9 +112,6 @@ CTCRW_filter <- function(
     T_array = T_array
   )
 }
-
-
-
 
 
 

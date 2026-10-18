@@ -127,6 +127,7 @@ fit <- optim(
   par     = params_start,
   fn      = function(p) { neg_loglikelihood_noerror(p, aug) },
   method  = "L-BFGS-B",
+  hessian = TRUE,
   control = list(trace = 1, maxit = 1000)
 )
 
@@ -147,6 +148,42 @@ beta_vert_hat   <- p_hat["beta_vert"]
 sigma_horiz_hat <- p_hat["sigma_horiz"]
 sigma_vert_hat  <- p_hat["sigma_vert"]
 
+
+############################################################
+# CONFIDENCE INTERVALS USING HESSIAN
+############################################################
+
+H <- fit$hessian
+Sigma_log <- solve(H)
+se_log <- sqrt(diag(Sigma_log))
+se_original <- p_hat * se_log
+
+lower <- p_hat - 1.96 * se_original
+upper <- p_hat + 1.96 * se_original
+
+cat("\nPARAMETER CONFIDENCE INTERVALS\n==============================\n")
+for (i in seq_along(p_hat)) {
+  cat(names(p_hat)[i], ": ", lower[i], " to ", upper[i], "\n")
+}
+
+
+############################################################
+# TABLE OF PARAMETER ESTIMATES AND CONFIDENCE INTERVALS
+############################################################
+
+param_table <- data.frame(
+  Parameter = names(p_hat),
+  Estimate  = p_hat,
+  StdError  = se_original,
+  Lower95   = lower,
+  Upper95   = upper,
+  row.names = NULL
+)
+
+cat("\nPARAMETER SUMMARY TABLE\n=======================\n")
+print(param_table)
+
+
 ############################################################
 # INTERPRETABLE PARAMETERS
 ############################################################
@@ -165,13 +202,14 @@ cat("Vertical autocorrelation time tau2 (hours):     ", tau2_hat / 3600, "\n")
 cat("Horizontal RMS speed nu1 (m/s):                 ", nu1_hat, "\n")
 cat("Vertical RMS speed nu2 (m/s):                   ", nu2_hat, "\n")
 
+
 ############################################################
 # FILTER + SMOOTHER USING ESTIMATED PARAMETERS
 ############################################################
 
 delta <- c(0, diff(aug$Time_sec))
-delta[!is.finite(delta)] <- 0
-delta <- pmax(delta, 0)
+#delta[!is.finite(delta)] <- 0 #
+#delta <- pmax(delta, 0) #
 
 Hmat_zero <- matrix(0, N, 3)
 Hmat_zero[,1] <- 5^2
@@ -179,13 +217,14 @@ Hmat_zero[,2] <- 5^2
 Hmat_zero[,3] <- 10^2
 
 
-a0 <- c(
+a1 <- c(
   get_first_non_missing(y[,1]), 0,
   get_first_non_missing(y[,2]), 0,
   get_first_non_missing(y[,3]), 0
 )
 
-P <- diag(6) * 1e6
+#P <- diag(6) * 1e6
+P1 <- diag(c(100, 10, 100, 10, 100, 10))
 
 cat("\nRUNNING KALMAN FILTER...\n")
 
@@ -197,20 +236,13 @@ filt <- CTCRW_filter(
   var_horiz_vec  = rep(sigma_horiz_hat^2, N),
   var_vert_vec   = rep(sigma_vert_hat^2,  N),
   delta          = delta,
-  a              = a0,
-  P              = P
+  a              = a1,
+  P              = P1
 )
 
 cat("RUNNING KALMAN SMOOTHER...\n")
 
-smooth <- CTCRW_smoother(
-  filter_out      = filt,
-  beta_horiz_vec  = rep(beta_horiz_hat,  N),
-  beta_vert_vec   = rep(beta_vert_hat,   N),
-  var_horiz_vec   = rep(sigma_horiz_hat^2, N),
-  var_vert_vec    = rep(sigma_vert_hat^2,  N),
-  delta           = delta
-)
+smooth <- CTCRW_smoother(filt)
 
 ############################################################
 # CREATE SMOOTHED TRACK DATA FRAME
