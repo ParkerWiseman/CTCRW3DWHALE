@@ -134,6 +134,9 @@ fit <- optim(
 cat("\nOPTIMIZATION RESULT\n===================\n")
 print(fit)
 
+
+##############################################################################
+
 ############################################################
 # TRANSFORM ESTIMATED PARAMETERS
 ############################################################
@@ -148,13 +151,17 @@ beta_vert_hat   <- p_hat["beta_vert"]
 sigma_horiz_hat <- p_hat["sigma_horiz"]
 sigma_vert_hat  <- p_hat["sigma_vert"]
 
-
 ############################################################
-# CONFIDENCE INTERVALS USING HESSIAN
+# HESSIAN-BASED COVARIANCE MATRIX
 ############################################################
 
 H <- fit$hessian
 Sigma_log <- solve(H)
+
+############################################################
+# CONFIDENCE INTERVALS FOR MODEL PARAMETERS
+############################################################
+
 se_log <- sqrt(diag(Sigma_log))
 se_original <- p_hat * se_log
 
@@ -162,13 +169,20 @@ lower <- p_hat - 1.96 * se_original
 upper <- p_hat + 1.96 * se_original
 
 cat("\nPARAMETER CONFIDENCE INTERVALS\n==============================\n")
-for (i in seq_along(p_hat)) {
-  cat(names(p_hat)[i], ": ", lower[i], " to ", upper[i], "\n")
+
+for(i in seq_along(p_hat)) {
+  cat(
+    names(p_hat)[i],
+    ": ",
+    lower[i],
+    " to ",
+    upper[i],
+    "\n"
+  )
 }
 
-
 ############################################################
-# TABLE OF PARAMETER ESTIMATES AND CONFIDENCE INTERVALS
+# PARAMETER SUMMARY TABLE
 ############################################################
 
 param_table <- data.frame(
@@ -182,6 +196,127 @@ param_table <- data.frame(
 
 cat("\nPARAMETER SUMMARY TABLE\n=======================\n")
 print(param_table)
+
+############################################################
+# INTERPRETABLE PARAMETERS
+############################################################
+
+tau1_hat <- 1 / beta_horiz_hat
+tau2_hat <- 1 / beta_vert_hat
+
+nu1_hat <- sigma_horiz_hat *
+  sqrt(pi) / (2 * sqrt(beta_horiz_hat))
+
+nu2_hat <- sigma_vert_hat *
+  sqrt(pi) / (2 * sqrt(beta_vert_hat))
+
+############################################################
+# DELTA-METHOD STANDARD ERRORS FOR TAU
+############################################################
+
+var_log_beta_h <- Sigma_log["beta_horiz", "beta_horiz"]
+var_log_beta_v <- Sigma_log["beta_vert",  "beta_vert"]
+
+se_tau1 <- tau1_hat * sqrt(var_log_beta_h)
+se_tau2 <- tau2_hat * sqrt(var_log_beta_v)
+
+tau1_lower <- tau1_hat - 1.96 * se_tau1
+tau1_upper <- tau1_hat + 1.96 * se_tau1
+
+tau2_lower <- tau2_hat - 1.96 * se_tau2
+tau2_upper <- tau2_hat + 1.96 * se_tau2
+
+############################################################
+# DELTA-METHOD STANDARD ERRORS FOR NU
+############################################################
+
+Sigma_h <- Sigma_log[c("beta_horiz","sigma_horiz"),c("beta_horiz","sigma_horiz")]
+
+grad_nu1 <- c(-nu1_hat / 2, nu1_hat)
+
+se_nu1 <- sqrt(as.numeric(t(grad_nu1) %*% Sigma_h %*% grad_nu1))
+
+nu1_lower <- nu1_hat - 1.96 * se_nu1
+nu1_upper <- nu1_hat + 1.96 * se_nu1
+
+Sigma_v <- Sigma_log[c("beta_vert","sigma_vert"),c("beta_vert","sigma_vert")]
+
+grad_nu2 <- c(-nu2_hat / 2, nu2_hat)
+
+se_nu2 <- sqrt(as.numeric(t(grad_nu2) %*% Sigma_v %*% grad_nu2))
+
+nu2_lower <- nu2_hat - 1.96 * se_nu2
+nu2_upper <- nu2_hat + 1.96 * se_nu2
+
+############################################################
+# PRINT INTERPRETABLE PARAMETERS
+############################################################
+
+cat("\nINTERPRETABLE PARAMETERS\n========================\n")
+
+cat("Horizontal autocorrelation time tau1 (seconds): ",tau1_hat,"\n")
+
+cat("Horizontal autocorrelation time tau1 (hours): ",tau1_hat / 3600,"\n")
+
+cat("Vertical autocorrelation time tau2 (seconds): ",tau2_hat,"\n")
+
+cat("Vertical autocorrelation time tau2 (hours): ",tau2_hat / 3600,"\n")
+
+cat("Horizontal RMS speed nu1 (m/s): ",nu1_hat,"\n")
+
+cat("Vertical RMS speed nu2 (m/s): ",nu2_hat,"\n")
+
+############################################################
+# DELTA-METHOD CONFIDENCE INTERVALS
+############################################################
+
+interp_table <- data.frame(
+  Parameter = c(
+    "tau1_sec",
+    "tau2_sec",
+    "nu1",
+    "nu2"
+  ),
+  Estimate = c(
+    tau1_hat,
+    tau2_hat,
+    nu1_hat,
+    nu2_hat
+  ),
+  StdError = c(
+    se_tau1,
+    se_tau2,
+    se_nu1,
+    se_nu2
+  ),
+  Lower95 = c(
+    tau1_lower,
+    tau2_lower,
+    nu1_lower,
+    nu2_lower
+  ),
+  Upper95 = c(
+    tau1_upper,
+    tau2_upper,
+    nu1_upper,
+    nu2_upper
+  )
+)
+
+cat(
+  "\nDELTA-METHOD CONFIDENCE INTERVALS\n",
+  "=================================\n",
+  sep = ""
+)
+
+print(interp_table)
+
+
+
+
+
+
+#############################################################################
 
 
 ############################################################
