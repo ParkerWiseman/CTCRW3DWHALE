@@ -52,7 +52,7 @@ CTCRW_filter <- function(
     Tmat <- makeT(
       beta_horiz = beta_horiz_vec[i],
       beta_vert  = beta_vert_vec[i],
-      delta      = delta[i+1]
+      delta      = delta[i]
     )
     
     T_array[,,i] <- Tmat
@@ -63,7 +63,7 @@ CTCRW_filter <- function(
       beta_vert  = beta_vert_vec[i],
       var_horiz  = var_horiz_vec[i],
       var_vert   = var_vert_vec[i],
-      delta      = delta[i+1]
+      delta      = delta[i]
     )
     
     # Observation mask
@@ -121,6 +121,37 @@ CTCRW_filter <- function(
     Pest[,,i+1] <- Tmat %*% Pest[,,i] %*% t(L[,,i]) + Qmat
     
     # Log-likelihood
+    ll <- ll - 0.5 * (log(det(F_i)) + t(v_i) %*% invF_i %*% v_i)
+  }
+  
+  ############################################################
+  # FINAL OBSERVATION AT TIME N
+  # No prediction step beyond N
+  ############################################################
+  
+  obs_mask <- !is.na(y[N,])
+  
+  obs_mask_store[N,] <- obs_mask
+  
+  if (any(obs_mask)) {
+    
+    Z_i <- Z[obs_mask, , drop = FALSE]
+    
+    H_i <- diag(Hmat[N, obs_mask],sum(obs_mask))
+    
+    v_i <- as.numeric(y[N, obs_mask] - Z_i %*% aest[N,])
+    
+    F_i <- Z_i %*% Pest[,,N] %*% t(Z_i) + H_i
+    
+    invF_i <- solve(F_i)
+    
+    # Store innovation
+    v[N, obs_mask] <- v_i
+    
+    # Store innovation covariance
+    F[obs_mask, obs_mask, N] <- F_i
+    
+    # Final log-likelihood contribution
     ll <- ll - 0.5 * (log(det(F_i)) + t(v_i) %*% invF_i %*% v_i)
   }
   

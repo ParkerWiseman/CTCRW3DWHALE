@@ -340,7 +340,7 @@ cat("Vertical RMS speed nu2 (m/s):                   ", nu2_hat, "\n")
 # FILTER + SMOOTHER USING ESTIMATED PARAMETERS
 ############################################################
 
-delta <- c(0, diff(aug$Time_sec))
+delta <- c(diff(aug$Time_sec),0)
 
 
 Hmat_zero <- matrix(0, N, 3)
@@ -416,6 +416,14 @@ n_plot <- min(1000, nrow(plot_data))
 subset_plot <- plot_data[1:n_plot, ]
 
 
+############################################################
+# FIRST 200 OBSERVATIONS
+############################################################
+
+n_200 <- min(200, nrow(plot_data))
+subset_200 <- plot_data[1:n_200, ]
+
+
 
 ############################################################
 # PLOT 1.0: DEPTH VS TIME (FIRST 200 OBSERVATIONS)
@@ -470,6 +478,10 @@ p_depth_200 <- ggplot() +
   theme_minimal()
 
 print(p_depth_200)
+
+
+
+
 
 
 ############################################################

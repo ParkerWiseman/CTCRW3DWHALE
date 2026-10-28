@@ -23,7 +23,7 @@ neg_loglikelihood_noerror <- function(
   N <- nrow(data_aug)
   
   # Using the numeric time column Time_sec directly (and removing two unnecessary lines)
-  delta <- c(0, diff(data_aug$Time_sec))
+  delta <- c(diff(data_aug$Time_sec),0)
   
   var_horiz_vec <- rep(sigma_horiz^2, N)
   var_vert_vec  <- rep(sigma_vert^2,  N)
