@@ -204,11 +204,9 @@ print(param_table)
 tau1_hat <- 1 / beta_horiz_hat
 tau2_hat <- 1 / beta_vert_hat
 
-nu1_hat <- sigma_horiz_hat *
-  sqrt(pi) / (2 * sqrt(beta_horiz_hat))
+nu1_hat <- sigma_horiz_hat * sqrt(pi) / (2 * sqrt(beta_horiz_hat))
 
-nu2_hat <- sigma_vert_hat *
-  sqrt(pi) / (2 * sqrt(beta_vert_hat))
+nu2_hat <- sigma_vert_hat * sqrt(pi) / (2 * sqrt(beta_vert_hat))
 
 ############################################################
 # DELTA-METHOD STANDARD ERRORS FOR TAU
@@ -343,12 +341,11 @@ cat("Vertical RMS speed nu2 (m/s):                   ", nu2_hat, "\n")
 ############################################################
 
 delta <- c(0, diff(aug$Time_sec))
-#delta[!is.finite(delta)] <- 0 #
-#delta <- pmax(delta, 0) #
+
 
 Hmat_zero <- matrix(0, N, 3)
-Hmat_zero[,1] <- 5^2
-Hmat_zero[,2] <- 5^2
+Hmat_zero[,1] <- 100^2
+Hmat_zero[,2] <- 100^2
 Hmat_zero[,3] <- 10^2
 
 
@@ -358,7 +355,7 @@ a1 <- c(
   get_first_non_missing(y[,3]), 0
 )
 
-#P <- diag(6) * 1e6
+
 P1 <- diag(c(100, 10, 100, 10, 100, 10))
 
 cat("\nRUNNING KALMAN FILTER...\n")
@@ -412,8 +409,6 @@ xy_plot <- plot_data %>%
 n_xy <- min(100, nrow(xy_plot))
 
 subset_xy <- xy_plot[1:n_xy, ]
-
-
 
 
 
