@@ -63,6 +63,19 @@ whale <- whale %>% filter(!is.na(time))
 whale <- whale %>% arrange(time)
 
 ############################################################
+# REPLACE MISSING DEPTHS WITH 0 WHEN POSITION IS OBSERVED
+############################################################
+
+whale <- whale %>%
+  mutate(
+    depth = ifelse(
+      !is.na(x) & !is.na(y) & is.na(depth),
+      0,
+      depth
+    )
+  )
+
+############################################################
 # CREATE AUGMENTED DATA
 ############################################################
 
