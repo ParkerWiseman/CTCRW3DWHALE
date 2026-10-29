@@ -6,6 +6,9 @@
 #
 # Durbin & Koopman disturbance smoother
 # 3D CTCRW version with partial-observation handling
+#
+# Updated so that the final observation at time N
+# contributes to the smoothing recursion.
 ############################################################
 
 CTCRW_smoother <- function(filter_out) {
@@ -26,9 +29,9 @@ CTCRW_smoother <- function(filter_out) {
   
   Z <- matrix(0, 3, 6)
   
-  Z[1,1] <- 1
-  Z[2,3] <- 1
-  Z[3,5] <- 1
+  Z[1,1] <- 1   # x
+  Z[2,3] <- 1   # y
+  Z[3,5] <- 1   # depth
   
   ##########################################################
   # Disturbance smoother variables
@@ -37,6 +40,27 @@ CTCRW_smoother <- function(filter_out) {
   r <- matrix(0, 6, 1)
   
   Nmat <- matrix(0, 6, 6)
+  
+  ##########################################################
+  # Incorporate final observation at time N
+  ##########################################################
+  
+  obs_mask_N <- obs_mask_store[Nobs, ]
+  
+  if (any(obs_mask_N)) {
+    
+    Z_use <- Z[obs_mask_N, , drop = FALSE]
+    
+    v_use <- matrix(v[Nobs, obs_mask_N], ncol = 1)
+    
+    F_use <- F[obs_mask_N,obs_mask_N,Nobs,drop = FALSE]
+    
+    Finv <- solve(F_use)
+    
+    r <- t(Z_use) %*% Finv %*% v_use
+    
+    Nmat <- t(Z_use) %*% Finv %*% Z_use
+  }
   
   ##########################################################
   # Output
@@ -49,7 +73,6 @@ CTCRW_smoother <- function(filter_out) {
   # Backward recursion
   ##########################################################
   
-# uses obs_mask stored from running the filter
   for (i in Nobs:2) {
     
     obs_mask <- obs_mask_store[i - 1, ]
@@ -70,7 +93,7 @@ CTCRW_smoother <- function(filter_out) {
       # Observed dimensions only
       ######################################################
       
-      v_use <- matrix(v[i-1, obs_mask], ncol = 1)
+      v_use <- matrix(v[i-1, obs_mask],ncol = 1)
       
       Z_use <- Z[obs_mask,,drop = FALSE]
       
@@ -93,7 +116,7 @@ CTCRW_smoother <- function(filter_out) {
     # Smoothed moments
     ########################################################
     
-    a_s[i-1,] <- aest[i-1,] + as.vector(Pest[,,i-1] %*% r)
+    a_s[i-1, ] <- aest[i-1, ] + as.vector(Pest[,,i-1] %*% r)
     
     P_s[,,i-1] <- Pest[,,i-1] - Pest[,,i-1] %*% Nmat %*% Pest[,,i-1]
   }
